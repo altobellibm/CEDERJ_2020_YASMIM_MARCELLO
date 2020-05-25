@@ -1,0 +1,23 @@
+<html>
+	<head>
+		<!-- Este é um comentário, os trechos aqui presentes são apenas descritivos
+		e não serão interpretados pelo navegador como componentes relevantes para a
+		estrutura da página.
+		Este é o início do cabeçalho do documento, representado pela tag head -->
+		<title>
+			Título da página web
+		</title>
+	</head>
+	<body>
+		<!-- Este é o início do corpo do documento, representado pela tag body.
+		Neste segmento estarão os componentes a serem exibidos na parte principal da
+		janela dos navegadores -->
+		<p>
+			Este é um parágrafo. Após o seu fechamento, haverá uma quebra de linha automática.
+		</p>
+		<p>
+			Este é um novo parágrafo
+		</p>
+	</body>
+</html>
+
