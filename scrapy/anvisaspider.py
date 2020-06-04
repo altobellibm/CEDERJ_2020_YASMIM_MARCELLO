@@ -1,7 +1,7 @@
 import scrapy
 
-class BularioAnvisaSpider(scrapy.Spider):
-    name = 'bularioanvisa'
+class AnvisaSpider(scrapy.Spider):
+    name = 'anvisa'
     #start_urls = [
     #    'http://quotes.toscrape.com/tag/humor/',
     #]
