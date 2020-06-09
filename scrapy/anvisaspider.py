@@ -23,17 +23,8 @@ class AnvisaSpider(scrapy.Spider):
 
     def request_callback(self, response):
         download_pdf_url = "http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp"
-        column_index = 1
-        target_column_text = "Bula do Profissional"
-        for table_headers_selector in response.css("#tblResultado thead tr th"): #tabela de resultado possui a ID tblResultado
-            table_header_as_string = table_headers_selector.get().replace("<br>", " ")
-            #print("table_header_text: "+table_header_as_string)
-            if target_column_text in table_header_as_string:
-                #print("achei no index", column_index)
-                break
-            else:
-                column_index += 1
-            #print(table_header_as_string)
+        column_index = self.get_column_index(response, "tblResultado", "Bula do Profissional")
+        
         table_cells_css_path = "#tblResultado tbody tr td:nth-child("+str(column_index)+")"
         print(table_cells_css_path)
         for table_cells_selector in response.css(table_cells_css_path):
@@ -54,6 +45,16 @@ class AnvisaSpider(scrapy.Spider):
         # next_page = response.css('li.next a::attr("href")').get()
         # if next_page is not None:
         #     yield response.follow(next_page, self.parse)
+
+    def get_column_index(self, response, table_element_id, target_column_text):
+        column_index = 1
+        for table_headers_selector in response.css("#"+table_element_id+" thead tr th"): #tabela de resultado possui a ID tblResultado
+            table_header_as_string = table_headers_selector.get().replace("<br>", " ")
+            if target_column_text in table_header_as_string:
+                break
+            else:
+                column_index += 1
+        return column_index
 
     def get_file_arguments_list(self, onclick_function):
         return re.findall("\d+", onclick_function)
