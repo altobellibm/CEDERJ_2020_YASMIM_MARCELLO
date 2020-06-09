@@ -1,4 +1,5 @@
 import scrapy
+import re
 
 class AnvisaSpider(scrapy.Spider):
     name = 'anvisa'
@@ -32,9 +33,16 @@ class AnvisaSpider(scrapy.Spider):
                 break
             else:
                 column_index += 1
-            print(table_header_as_string)
-        print(column_index)
-
+            #print(table_header_as_string)
+        table_cells_css_path = "#tblResultado tbody tr td:nth-child("+str(column_index)+")"
+        print(table_cells_css_path)
+        for table_cells_selector in response.css(table_cells_css_path):
+            file_link = table_cells_selector.css("a::attr(onclick)").get()
+            file_arguments_list = self.get_file_arguments_list(file_link)
+            transaction_number = self.get_transaction_number(file_arguments_list)
+            attachment_number = self.get_attachment_number(file_arguments_list)
+            print(file_link+" -> "+str(transaction_number)+" and "+str(attachment_number))
+            #print(file_link)
 
     def parse(self, response):
         for quote in response.css('div.quote'):
@@ -46,3 +54,12 @@ class AnvisaSpider(scrapy.Spider):
         # next_page = response.css('li.next a::attr("href")').get()
         # if next_page is not None:
         #     yield response.follow(next_page, self.parse)
+
+    def get_file_arguments_list(self, onclick_function):
+        return re.findall("\d+", onclick_function)
+
+    def get_transaction_number(self, file_arguments_list):
+        return file_arguments_list[0]
+
+    def get_attachment_number(self, file_arguments_list):
+        return file_arguments_list[1]
