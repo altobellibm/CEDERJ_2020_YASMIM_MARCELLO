@@ -17,30 +17,24 @@ class AnvisaSpider(scrapy.Spider):
                 'txtPageSize': '10',
                 'btnPesquisar': ''
             },
-            callback=self.request_callback
+            callback=self.crawl_result
         )
                                    
-    def request_callback(self, response):
+    def crawl_result(self, response):
         self.logger.info("Resposta da busca recebida")
         table_element_id = "tblResultado"
         column_index = self.get_column_index(response, table_element_id, "Bula do Profissional")
         
         table_cells_css_path = "#"+table_element_id+" tbody tr td:nth-child("+str(column_index)+")"
-        for table_cells_selector in response.css(table_cells_css_path):
+        result_cells = response.css(table_cells_css_path)
+        #pdb.set_trace()
+        for table_cells_selector in result_cells:
             file_link = table_cells_selector.css("a::attr(onclick)").get()
             file_arguments_list = self.get_file_arguments_list(file_link)
             transaction_number = self.get_transaction_number(file_arguments_list)
             attachment_number = self.get_attachment_number(file_arguments_list)
-            params = {'pNuTransacao': transaction_number, 'pIdAnexo': attachment_number}
-            self.logger.info("Requisitando PDF %s", params)
-            yield scrapy.FormRequest("http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp",
-                formdata={
-                    'pNuTransacao': transaction_number,
-                    'pIdAnexo': attachment_number
-                },
-                headers={'X-Attachment-Number': attachment_number},
-                callback=self.save_pdf
-            )
+            self.logger.info("Requisitando PDF ID %d", attachment_number)
+            self.request_pdf(transaction_number, attachment_number)
 
     def get_column_index(self, response, table_element_id, target_column_text):
         self.logger.info("Procurando pelo titulo de coluna '%s'", target_column_text)
@@ -58,6 +52,16 @@ class AnvisaSpider(scrapy.Spider):
             return column_index
         else:
             raise Exception("Nao foi possivel encontrar a coluna '%s'", target_column_text)
+
+    def request_pdf(self, transaction_number, attachment_number):
+        yield scrapy.FormRequest("http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp",
+            formdata={
+                'pNuTransacao': transaction_number,
+                'pIdAnexo': attachment_number
+            },
+            headers={'X-Attachment-Number': attachment_number},
+            callback=self.save_pdf
+        )
 
     def get_file_arguments_list(self, onclick_function):
         return re.findall("\d+", onclick_function)
