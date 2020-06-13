@@ -14,7 +14,7 @@ class AnvisaSpider(scrapy.Spider):
                 'txtNuExpediente': '',
                 'txtDataPublicacaoI': '',
                 'txtDataPublicacaoF': '',
-                'txtPageSize': '10',
+                'hddPageSize': '10',
                 'btnPesquisar': ''
             },
             callback=self.crawl_result
