@@ -7,34 +7,57 @@ class AnvisaSpider(scrapy.Spider):
     name = 'anvisa'
 
     def start_requests(self):
+        first_page = 1
         yield scrapy.FormRequest("http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp",
             formdata={
                 'txtMedicamento': 'dipirona',
-                'txtEmpresa': '',
-                'txtNuExpediente': '',
-                'txtDataPublicacaoI': '',
-                'txtDataPublicacaoF': '',
+                #'txtEmpresa': '',
+                #'txtNuExpediente': '',
+                #'txtDataPublicacaoI': '',
+                #'txtDataPublicacaoF': '',
                 'hddPageSize': '10',
-                'btnPesquisar': ''
+                'hddPageAbsolute': str(first_page),
+                #'btnPesquisar': ''
             },
+            headers={'X-Current-Page': str(first_page)},
             callback=self.crawl_result
         )
                                    
     def crawl_result(self, response):
-        self.logger.info("Resposta da busca recebida")
+        current_page = int(response.request.headers['X-Current-Page'])
+        self.logger.info("Resposta da pagina %d recebida", current_page)
         table_element_id = "tblResultado"
         column_index = self.get_column_index(response, table_element_id, "Bula do Profissional")
         
         table_cells_css_path = "#"+table_element_id+" tbody tr td:nth-child("+str(column_index)+")"
         result_cells = response.css(table_cells_css_path)
-        #pdb.set_trace()
-        for table_cells_selector in result_cells:
-            file_link = table_cells_selector.css("a::attr(onclick)").get()
-            file_arguments_list = self.get_file_arguments_list(file_link)
-            transaction_number = self.get_transaction_number(file_arguments_list)
-            attachment_number = self.get_attachment_number(file_arguments_list)
-            self.logger.info("Requisitando PDF ID %d", attachment_number)
-            self.request_pdf(transaction_number, attachment_number)
+        if result_cells:
+            for table_cells_selector in result_cells:
+                file_link = table_cells_selector.css("a::attr(onclick)").get()
+                file_arguments_list = self.get_file_arguments_list(file_link)
+                transaction_number = self.get_transaction_number(file_arguments_list)
+                attachment_number = self.get_attachment_number(file_arguments_list)
+                self.logger.info("Requisitando PDF ID %s", attachment_number)
+                #self.request_pdf(transaction_number, attachment_number) #TODO: pq nao funciona?
+                yield scrapy.FormRequest("http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp",
+                    formdata={
+                        'pNuTransacao': transaction_number,
+                        'pIdAnexo': attachment_number
+                    },
+                    headers={'X-Attachment-Number': attachment_number},
+                    callback=self.save_pdf
+                )
+            #proxima pagina
+            next_page_as_str = str(current_page+1)
+            yield scrapy.FormRequest("http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp",
+                formdata={
+                    'txtMedicamento': 'dipirona',
+                    'hddPageSize': '10',
+                    'hddPageAbsolute': next_page_as_str,
+                },
+                headers={'X-Current-Page': next_page_as_str},
+                callback=self.crawl_result
+            )
 
     def get_column_index(self, response, table_element_id, target_column_text):
         self.logger.info("Procurando pelo titulo de coluna '%s'", target_column_text)
@@ -53,15 +76,18 @@ class AnvisaSpider(scrapy.Spider):
         else:
             raise Exception("Nao foi possivel encontrar a coluna '%s'", target_column_text)
 
-    def request_pdf(self, transaction_number, attachment_number):
-        yield scrapy.FormRequest("http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp",
-            formdata={
-                'pNuTransacao': transaction_number,
-                'pIdAnexo': attachment_number
-            },
-            headers={'X-Attachment-Number': attachment_number},
-            callback=self.save_pdf
-        )
+    # por algum motivo nao funcionou assim
+    # precisamos entender depois o motivo
+    # def request_pdf(self, transaction_number, attachment_number):
+    #     pdb.set_trace()
+    #     yield scrapy.FormRequest("http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp",
+    #         formdata={
+    #             'pNuTransacao': transaction_number,
+    #             'pIdAnexo': attachment_number
+    #         },
+    #         headers={'X-Attachment-Number': attachment_number},
+    #         callback=self.save_pdf
+    #     )
 
     def get_file_arguments_list(self, onclick_function):
         return re.findall("\d+", onclick_function)
