@@ -1,6 +1,7 @@
 import scrapy
 import re
 import pdb
+import shutil
 
 class AnvisaSpider(scrapy.Spider):
     name = 'anvisa'
@@ -13,14 +14,14 @@ class AnvisaSpider(scrapy.Spider):
                 'txtNuExpediente': '',
                 'txtDataPublicacaoI': '',
                 'txtDataPublicacaoF': '',
-                'txtPageSize': '3',
+                'txtPageSize': '10',
                 'btnPesquisar': ''
             },
             callback=self.request_callback
         )
                                    
     def request_callback(self, response):
-        self.logger.info()
+        self.logger.info("Resposta da busca recebida")
         table_element_id = "tblResultado"
         column_index = self.get_column_index(response, table_element_id, "Bula do Profissional")
         
@@ -30,6 +31,8 @@ class AnvisaSpider(scrapy.Spider):
             file_arguments_list = self.get_file_arguments_list(file_link)
             transaction_number = self.get_transaction_number(file_arguments_list)
             attachment_number = self.get_attachment_number(file_arguments_list)
+            params = {'pNuTransacao': transaction_number, 'pIdAnexo': attachment_number}
+            self.logger.info("Requisitando PDF %s", params)
             yield scrapy.FormRequest("http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp",
                 formdata={
                     'pNuTransacao': transaction_number,
@@ -66,8 +69,13 @@ class AnvisaSpider(scrapy.Spider):
         return file_arguments_list[1]
 
     def save_pdf(self, response):
+        folder = "bula_download"
         filename = response.request.headers['X-Attachment-Number']
-        path = filename + ".pdf"
+        path = folder + "/" + filename + ".pdf"
         self.logger.info('Salvando PDF %s', path)
         with open(path, 'wb') as f:
             f.write(response.body)
+
+    def clean_folder(self, folder):
+        for filename in os.listdir(folder):
+            os.remove(folder+"/"+filename)
