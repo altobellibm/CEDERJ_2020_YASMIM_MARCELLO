@@ -60,7 +60,7 @@ class AnvisaSpider(scrapy.Spider):
             )
 
     def get_column_index(self, response, table_element_id, target_column_text):
-        self.logger.info('Procurando pelo titulo de coluna '%s'', target_column_text)
+        self.logger.info('Procurando pelo titulo de coluna "%s"', target_column_text)
         column_index = 1
         column_found = False
         for table_headers_selector in response.css('#'+table_element_id+' thead tr th'): #tabela de resultado possui a ID tblResultado
