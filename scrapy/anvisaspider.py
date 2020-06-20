@@ -2,27 +2,35 @@ import scrapy
 import re
 import pdb
 import os
+import shutil
+import sys
 
+SPIDER_DIR = os.path.dirname(os.path.abspath(__file__))
 class AnvisaSpider(scrapy.Spider):
     name = 'anvisa'
 
     def start_requests(self):
-        first_page = 1
-        self.clean_folder()
-        yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
-            formdata={
-                'txtMedicamento': 'paracetamol',
-                #'txtEmpresa': '',
-                #'txtNuExpediente': '',
-                #'txtDataPublicacaoI': '',
-                #'txtDataPublicacaoF': '',
-                'hddPageSize': '10',
-                'hddPageAbsolute': str(first_page),
-                #'btnPesquisar': ''
-            },
-            headers={'X-Current-Page': str(first_page)},
-            callback=self.crawl_result
-        )
+        if not hasattr(self, "busca"):
+            raise Exception('Especifique o parametro "busca" com o principio ativo desejado')
+            ##TODO: se possivel, vamos especificar essa excecao
+        else:
+            #if os.path.isfile(os.path.join(SPIDER_DIR, "autocomplete", "medicamentos.txt"))
+            first_page = 1
+            self.clean_folder()
+            yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
+                formdata={
+                    'txtMedicamento': self.busca,
+                    #'txtEmpresa': '',
+                    #'txtNuExpediente': '',
+                    #'txtDataPublicacaoI': '',
+                    #'txtDataPublicacaoF': '',
+                    'hddPageSize': '10',
+                    'hddPageAbsolute': str(first_page),
+                    #'btnPesquisar': ''
+                },
+                headers={'X-Current-Page': str(first_page)},
+                callback=self.crawl_result
+            )
                                    
     def crawl_result(self, response):
         current_page = int(response.request.headers['X-Current-Page'])
@@ -51,13 +59,16 @@ class AnvisaSpider(scrapy.Spider):
             next_page_as_str = str(current_page+1)
             yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
                 formdata={
-                    'txtMedicamento': 'dipirona',
+                    'txtMedicamento': self.busca,
                     'hddPageSize': '10',
                     'hddPageAbsolute': next_page_as_str,
                 },
                 headers={'X-Current-Page': next_page_as_str},
                 callback=self.crawl_result
             )
+        else:
+            if current_page == 1:
+                raise Exception('Nenhum resultado disponivel para a busca')
 
     def get_column_index(self, response, table_element_id, target_column_text):
         self.logger.info('Procurando pelo titulo de coluna "%s"', target_column_text)
@@ -88,18 +99,14 @@ class AnvisaSpider(scrapy.Spider):
     def save_pdf(self, response):
         folder = "bula_download"
         filename = response.request.headers['X-Attachment-Number']
-        path = folder + '/' + filename + '.pdf'
+        path = os.path.join(SPIDER_DIR, folder, filename + '.pdf')
         if not os.path.exists(folder):
             os.makedirs(folder)
-        # else:
-        #     for filename in os.listdir(folder):
-        #         os.remove(filename)
         self.logger.info('Salvando PDF %s', path)
         with open(path, 'wb') as f:
             f.write(response.body)
 
     def clean_folder(self):
-        folder = "bula_download"
+        folder = os.path.join(SPIDER_DIR, "bula_download")
         if os.path.exists(folder):
-            for filename in os.listdir(folder):
-                os.remove(folder+'/'+filename)
+            shutil.rmtree(folder)
