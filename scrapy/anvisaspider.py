@@ -1,7 +1,7 @@
 import scrapy
 import re
 import pdb
-import shutil
+import os
 
 class AnvisaSpider(scrapy.Spider):
     name = 'anvisa'
@@ -102,6 +102,8 @@ class AnvisaSpider(scrapy.Spider):
         folder = 'bula_download'
         filename = response.request.headers['X-Attachment-Number']
         path = folder + '/' + filename + '.pdf'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
         self.logger.info('Salvando PDF %s', path)
         with open(path, 'wb') as f:
             f.write(response.body)
