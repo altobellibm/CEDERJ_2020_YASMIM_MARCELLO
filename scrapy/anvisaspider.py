@@ -8,9 +8,10 @@ class AnvisaSpider(scrapy.Spider):
 
     def start_requests(self):
         first_page = 1
+        self.clean_folder()
         yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
             formdata={
-                'txtMedicamento': 'dipirona',
+                'txtMedicamento': 'paracetamol',
                 #'txtEmpresa': '',
                 #'txtNuExpediente': '',
                 #'txtDataPublicacaoI': '',
@@ -38,7 +39,6 @@ class AnvisaSpider(scrapy.Spider):
                 transaction_number = self.get_transaction_number(file_arguments_list)
                 attachment_number = self.get_attachment_number(file_arguments_list)
                 self.logger.info('Requisitando PDF ID %s', attachment_number)
-                #self.request_pdf(transaction_number, attachment_number) #TODO: pq nao funciona?
                 yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp',
                     formdata={
                         'pNuTransacao': transaction_number,
@@ -76,19 +76,6 @@ class AnvisaSpider(scrapy.Spider):
         else:
             raise Exception('Nao foi possivel encontrar a coluna "%s"', target_column_text)
 
-    # por algum motivo nao funcionou assim
-    # precisamos entender depois o motivo
-    # def request_pdf(self, transaction_number, attachment_number):
-    #     pdb.set_trace()
-    #     yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp',
-    #         formdata={
-    #             'pNuTransacao': transaction_number,
-    #             'pIdAnexo': attachment_number
-    #         },
-    #         headers={'X-Attachment-Number': attachment_number},
-    #         callback=self.save_pdf
-    #     )
-
     def get_file_arguments_list(self, onclick_function):
         return re.findall('\d+', onclick_function)
 
@@ -99,15 +86,20 @@ class AnvisaSpider(scrapy.Spider):
         return file_arguments_list[1]
 
     def save_pdf(self, response):
-        folder = 'bula_download'
+        folder = "bula_download"
         filename = response.request.headers['X-Attachment-Number']
         path = folder + '/' + filename + '.pdf'
         if not os.path.exists(folder):
             os.makedirs(folder)
+        # else:
+        #     for filename in os.listdir(folder):
+        #         os.remove(filename)
         self.logger.info('Salvando PDF %s', path)
         with open(path, 'wb') as f:
             f.write(response.body)
 
-    def clean_folder(self, folder):
-        for filename in os.listdir(folder):
-            os.remove(folder+'/'+filename)
+    def clean_folder(self):
+        folder = "bula_download"
+        if os.path.exists(folder):
+            for filename in os.listdir(folder):
+                os.remove(folder+'/'+filename)
