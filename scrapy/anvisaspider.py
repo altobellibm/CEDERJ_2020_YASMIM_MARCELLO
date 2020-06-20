@@ -4,6 +4,7 @@ import pdb
 import os
 import shutil
 import sys
+from scrapy.crawler import CrawlerProcess
 
 SPIDER_DIR = os.path.dirname(os.path.abspath(__file__))
 class AnvisaSpider(scrapy.Spider):
@@ -14,8 +15,8 @@ class AnvisaSpider(scrapy.Spider):
             raise Exception('Especifique o parametro "busca" com o principio ativo desejado')
             ##TODO: se possivel, vamos especificar essa excecao
         else:
-            #if os.path.isfile(os.path.join(SPIDER_DIR, "autocomplete", "medicamentos.txt"))
             first_page = 1
+            #pdb.set_trace()
             self.clean_folder()
             yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
                 formdata={
@@ -57,6 +58,7 @@ class AnvisaSpider(scrapy.Spider):
                 )
             #proxima pagina
             next_page_as_str = str(current_page+1)
+            #pdb.set_trace()
             yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
                 formdata={
                     'txtMedicamento': self.busca,
@@ -99,7 +101,7 @@ class AnvisaSpider(scrapy.Spider):
     def save_pdf(self, response):
         folder = "bula_download"
         filename = response.request.headers['X-Attachment-Number']
-        path = os.path.join(SPIDER_DIR, folder, filename + '.pdf')
+        path = os.path.join(SPIDER_DIR, folder, filename.decode("utf-8") + '.pdf')
         if not os.path.exists(folder):
             os.makedirs(folder)
         self.logger.info('Salvando PDF %s', path)
@@ -110,3 +112,32 @@ class AnvisaSpider(scrapy.Spider):
         folder = os.path.join(SPIDER_DIR, "bula_download")
         if os.path.exists(folder):
             shutil.rmtree(folder)
+
+class AutocompleteSpider(scrapy.Spider):
+    name = 'autocomplete'
+    start_urls = [
+        'http://www.anvisa.gov.br/datavisa/fila_bula/funcoes/ajax.asp?opcao=getsuggestion&ptipo=1'
+    ]
+
+    def parse(self, response):
+        suggestions_list = response.text.split(',')
+        self.logger.info('%d sugestoes de medicamentos encontradas', len(suggestions_list))
+        self.save_to_file(suggestions_list)
+
+    def save_to_file(self, suggestions_list):
+        folder = 'autocomplete'
+        filepath = os.path.join(SPIDER_DIR, folder, 'medicamentos.txt')
+        if not os.path.exists(os.path.join(SPIDER_DIR, folder)):
+            os.makedirs(os.path.join(SPIDER_DIR, folder))
+        self.logger.info('Salvando arquivo %s', filepath)
+        #pdb.set_trace()
+        with open(filepath, 'w', encoding='utf-8') as f:
+            for suggestion in suggestions_list:
+                #pdb.set_trace()
+                f.write(suggestion.replace('"','').replace('[','').replace(']',''))
+                f.write('\n')
+
+process = CrawlerProcess()
+process.crawl(AutocompleteSpider)
+process.crawl(AnvisaSpider, busca=sys.argv[1])
+process.start() # the script will block here until all crawling jobs are finished
