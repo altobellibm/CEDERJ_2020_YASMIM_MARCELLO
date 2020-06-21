@@ -4,34 +4,53 @@ import pdb
 import os
 import shutil
 import sys
-from scrapy.crawler import CrawlerProcess
+from scrapy.crawler import CrawlerProcess, CrawlerRunner
+from scrapy.utils.log import configure_logging
+from twisted.internet import reactor, defer
 
 SPIDER_DIR = os.path.dirname(os.path.abspath(__file__))
 class AnvisaSpider(scrapy.Spider):
     name = 'anvisa'
 
     def start_requests(self):
-        if not hasattr(self, "busca"):
-            raise Exception('Especifique o parametro "busca" com o principio ativo desejado')
+        if not hasattr(self, "search"):
+            raise Exception('Especifique o parametro com o principio ativo desejado')
             ##TODO: se possivel, vamos especificar essa excecao
         else:
-            first_page = 1
-            #pdb.set_trace()
-            self.clean_folder()
-            yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
-                formdata={
-                    'txtMedicamento': self.busca,
-                    #'txtEmpresa': '',
-                    #'txtNuExpediente': '',
-                    #'txtDataPublicacaoI': '',
-                    #'txtDataPublicacaoF': '',
-                    'hddPageSize': '10',
-                    'hddPageAbsolute': str(first_page),
-                    #'btnPesquisar': ''
-                },
-                headers={'X-Current-Page': str(first_page)},
-                callback=self.crawl_result
-            )
+            autocomplete_file_path = os.path.join(SPIDER_DIR, "autocomplete", "medicamentos.txt")
+            if os.path.isfile(autocomplete_file_path):
+                suggestion_list = self.get_search_suggestions(autocomplete_file_path, self.search)
+                if not suggestion_list:
+                    raise Exception('Nenhum resultado disponivel para a busca')
+                for suggestion in suggestion_list:
+
+                    first_page = 1
+                    page_size = 10
+                    self.clean_folder()
+                    yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
+                        formdata={
+                            'txtMedicamento': suggestion,
+                            'hddPageSize': str(page_size),
+                            'hddPageAbsolute': str(first_page),
+                        },
+                        headers={
+                            'X-Current-Page': str(first_page),
+                            'X-Med-Search': suggestion,
+                            'X-Page-Size': str(page_size)
+                        },
+                        callback=self.crawl_result
+                    )
+            else:
+                raise Exception('Arquivo de autocomplete nao encontrado')
+
+    def get_search_suggestions(self, file_path, search):
+        suggestions = []
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                if search.upper() in line.upper(): #caso as sugestoes passem a vir com algum caracter minusculo, ja garantimos que nao dara problema
+                    suggestions.append(line.rstrip("\n"))
+        #pdb.set_trace()
+        return suggestions
                                    
     def crawl_result(self, response):
         current_page = int(response.request.headers['X-Current-Page'])
@@ -41,6 +60,7 @@ class AnvisaSpider(scrapy.Spider):
         
         table_cells_css_path = '#'+table_element_id+' tbody tr td:nth-child('+str(column_index)+')'
         result_cells = response.css(table_cells_css_path)
+        #pdb.set_trace()
         if result_cells:
             for table_cells_selector in result_cells:
                 file_link = table_cells_selector.css('a::attr(onclick)').get()
@@ -57,20 +77,23 @@ class AnvisaSpider(scrapy.Spider):
                     callback=self.save_pdf
                 )
             #proxima pagina
+            search = response.request.headers['X-Med-Search'].decode("utf-8")
+            page_size = response.request.headers['X-Page-Size'].decode("utf-8")
             next_page_as_str = str(current_page+1)
-            #pdb.set_trace()
+            pdb.set_trace()
             yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
                 formdata={
-                    'txtMedicamento': self.busca,
-                    'hddPageSize': '10',
+                    'txtMedicamento': search,
+                    'hddPageSize': page_size,
                     'hddPageAbsolute': next_page_as_str,
                 },
-                headers={'X-Current-Page': next_page_as_str},
+                headers={
+                    'X-Current-Page': next_page_as_str,
+                    'X-Med-Search': search,
+                    'X-Page-Size': page_size
+                },
                 callback=self.crawl_result
             )
-        else:
-            if current_page == 1:
-                raise Exception('Nenhum resultado disponivel para a busca')
 
     def get_column_index(self, response, table_element_id, target_column_text):
         self.logger.info('Procurando pelo titulo de coluna "%s"', target_column_text)
@@ -130,14 +153,20 @@ class AutocompleteSpider(scrapy.Spider):
         if not os.path.exists(os.path.join(SPIDER_DIR, folder)):
             os.makedirs(os.path.join(SPIDER_DIR, folder))
         self.logger.info('Salvando arquivo %s', filepath)
-        #pdb.set_trace()
         with open(filepath, 'w', encoding='utf-8') as f:
             for suggestion in suggestions_list:
-                #pdb.set_trace()
                 f.write(suggestion.replace('"','').replace('[','').replace(']',''))
                 f.write('\n')
 
-process = CrawlerProcess()
-process.crawl(AutocompleteSpider)
-process.crawl(AnvisaSpider, busca=sys.argv[1])
-process.start() # the script will block here until all crawling jobs are finished
+configure_logging()
+runner = CrawlerRunner()
+
+@defer.inlineCallbacks
+def crawl():
+    yield runner.crawl(AutocompleteSpider)
+    #pdb.set_trace()
+    yield runner.crawl(AnvisaSpider, search=sys.argv[1])
+    reactor.stop()
+
+crawl()
+reactor.run() # the script will block here until the last crawl call is finished
