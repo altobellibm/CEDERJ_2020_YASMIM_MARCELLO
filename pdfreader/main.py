@@ -1,57 +1,43 @@
-from os import path, getcwd
-from glob import glob
-from PdfReader import MinerArticle
-import numpy as np
-from texttable import Texttable
-from datetime import timedelta, datetime
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from pdfminer.pdfpage import PDFPage
+from io import StringIO
+import os
 import pdb
 
-mypath = path.join(getcwd(), "dataset", "*.pdf")
-files = glob(mypath)
-erro_reading = []
-propr_farmac = {}
-inicio = datetime.now()
-pdb.set_trace()
-for file in files:
-    inicio_mineracao = datetime.now()
-    print(f"Nome do arquivo: {file.replace(path.join(getcwd(), 'dataset', ''), '')}\n")
-    try:
-        pdf = MinerArticle(file)
-        colunas = [item for item in str(pdf).split("Propriedade Farmacêuticas: ") if item != '']
-        for coluna in colunas:
-            valores = [valor for valor in coluna.split("\n") if valor not in ['', ' ']]
-            propr_farmac[valores[0]] = valores[1:]
+CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
 
-        maxlen = max(len(propr_farmac['Hardness ']), len(propr_farmac['Friability ']),
-                     len(propr_farmac['Disintegration ']))
-        for prop in propr_farmac.keys():
-            [propr_farmac[prop].append('Variable not found.') for x in range(maxlen - len(propr_farmac[prop]))]
+def convert_pdf_to_txt(path):
+    pdf_resource_manager = PDFResourceManager()
+    retstr = StringIO()
+    device = TextConverter(pdf_resource_manager, retstr, codec='utf-8', laparams=LAParams())
+    with open(path, 'rb') as fp:
+        pdf_page_interpreter = PDFPageInterpreter(pdf_resource_manager, device)
+        for page in PDFPage.get_pages(fp, set(), maxpages=0, password="", caching=True, check_extractable=True):
+            pdf_page_interpreter.process_page(page)
+        text = retstr.getvalue()
+    device.close()
+    retstr.close()
+    return text
 
-        imprimir_tbl(propr_farmac)
-        print(f'Tempo de mineração: {time_diff(inicio_mineracao)}\n')
-    except:
-        erro_reading.append(file.replace(path.join(getcwd(), 'dataset', ''), ''))
-
-if len(erro_reading) > 0:
-    print("\n**************************\nError reading files:")
-    [print(erro + '\n') for erro in erro_reading]
-
-print(f'Tempo Total gasto: {time_diff(inicio)}')
-
-def imprimir_tbl(dados):
-    tabela = Texttable()
-    lista = [list(dados.keys())]
-    for tupla in range(len(dados['Hardness '])):
-        linha = []
-        [linha.append(dados[chave][tupla]) for chave in dados.keys()]
-        lista.append(linha)
-    dados = np.array(lista).T
-    tamanhos = [len(max(linha, key=len)) for linha in dados]
-    tabela.set_cols_width(tamanhos)
-    tabela.set_cols_align(["c", "c", "c"])
-    tabela.add_rows(lista)
-    print("Dados:\n" + tabela.draw())
-
-def time_diff(ini):
-    duracao = timedelta.total_seconds(datetime.now() - ini)
-    return f'{duracao:.2f} segundos'
+files_dir = os.path.join(CURRENT_PATH, os.pardir, "scrapy", "bula_download")
+#my_file = os.path.join(files_dir, '2462371.pdf')
+composition_start_index = -1
+with open('pdf.txt', 'w', encoding='utf-8') as f:
+    for filename in os.listdir(files_dir):
+        f.write('**** Arquivo ' + filename + ' ****')
+        print('**** Arquivo ' + filename + ' ****')
+        pdf_text_content = convert_pdf_to_txt(os.path.abspath(os.path.join(files_dir, filename)))
+        print('PDF lido')
+        for i in range(pdf_text_content.count('COMPOSIÇÃO')):
+            composition_start_index = pdf_text_content.find('COMPOSIÇÃO')
+            print('Range start: ' + composition_start_index)
+            composition_end_index = pdf_text_content.find('INFORMAÇÕES TÉCNICAS')
+            print('Range end: ' + composition_end_index)
+            if composition_end_index < composition_start_index:
+                #se cairmos aqui eh devido ao 'informacoes tecnicas' vir antes da 'composicao'
+                #neste caso, devemos procurar por 'indicacoes' para delimitar o fim da secao desejada
+                composition_end_index = pdf_text_content.find('INDICAÇÕES')
+            f.write(pdf_text_content[composition_start_index : composition_end_index])
+#print(convert_pdf_to_txt(my_file))
