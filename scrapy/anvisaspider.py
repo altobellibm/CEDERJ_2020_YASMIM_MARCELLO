@@ -13,6 +13,7 @@ class AnvisaSpider(scrapy.Spider):
     name = 'anvisa'
 
     def start_requests(self):
+        #pdb.set_trace()
         if not hasattr(self, "search"):
             raise Exception('Especifique o parametro com o principio ativo desejado')
             ##TODO: se possivel, vamos especificar essa excecao
@@ -49,7 +50,6 @@ class AnvisaSpider(scrapy.Spider):
             for line in f:
                 if search.upper() in line.upper(): #caso as sugestoes passem a vir com algum caracter minusculo, ja garantimos que nao dara problema
                     suggestions.append(line.rstrip("\n"))
-        #pdb.set_trace()
         return suggestions
                                    
     def crawl_result(self, response):
@@ -60,7 +60,6 @@ class AnvisaSpider(scrapy.Spider):
         
         table_cells_css_path = '#'+table_element_id+' tbody tr td:nth-child('+str(column_index)+')'
         result_cells = response.css(table_cells_css_path)
-        #pdb.set_trace()
         if result_cells:
             for table_cells_selector in result_cells:
                 file_link = table_cells_selector.css('a::attr(onclick)').get()
@@ -80,7 +79,6 @@ class AnvisaSpider(scrapy.Spider):
             search = response.request.headers['X-Med-Search'].decode("utf-8")
             page_size = response.request.headers['X-Page-Size'].decode("utf-8")
             next_page_as_str = str(current_page+1)
-            pdb.set_trace()
             yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
                 formdata={
                     'txtMedicamento': search,
@@ -164,7 +162,6 @@ runner = CrawlerRunner()
 @defer.inlineCallbacks
 def crawl():
     yield runner.crawl(AutocompleteSpider)
-    #pdb.set_trace()
     yield runner.crawl(AnvisaSpider, search=sys.argv[1])
     reactor.stop()
 
