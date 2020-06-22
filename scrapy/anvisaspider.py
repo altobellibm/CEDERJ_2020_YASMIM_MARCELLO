@@ -1,25 +1,22 @@
 import scrapy
 import re
 import pdb
-import os
 import shutil
-import sys
-from scrapy.crawler import CrawlerProcess, CrawlerRunner
-from scrapy.utils.log import configure_logging
-from twisted.internet import reactor, defer
+from autocompletespider import AutocompleteSpider
+from pathlib import Path
 
-SPIDER_DIR = os.path.dirname(os.path.abspath(__file__))
+CURRENT_FOLDER = Path(__file__).parent
+
 class AnvisaSpider(scrapy.Spider):
     name = 'anvisa'
 
     def start_requests(self):
-        #pdb.set_trace()
         if not hasattr(self, "search"):
             raise Exception('Especifique o parametro com o principio ativo desejado')
             ##TODO: se possivel, vamos especificar essa excecao
         else:
-            autocomplete_file_path = os.path.join(SPIDER_DIR, "autocomplete", "medicamentos.txt")
-            if os.path.isfile(autocomplete_file_path):
+            autocomplete_file_path = CURRENT_FOLDER / 'autocomplete' / 'medicamentos.txt'
+            if autocomplete_file_path.is_file():
                 suggestion_list = self.get_search_suggestions(autocomplete_file_path, self.search)
                 if not suggestion_list:
                     raise Exception('Nenhum resultado disponivel para a busca')
@@ -120,50 +117,16 @@ class AnvisaSpider(scrapy.Spider):
         return file_arguments_list[1]
 
     def save_pdf(self, response):
-        folder = "bula_download"
+        folder_path = CURRENT_FOLDER / 'bula_download'
         filename = response.request.headers['X-Attachment-Number']
-        path = os.path.join(SPIDER_DIR, folder, filename.decode("utf-8") + '.pdf')
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        self.logger.info('Salvando PDF %s', path)
-        with open(path, 'wb') as f:
+        file_path = folder_path / (filename.decode("utf-8") + '.pdf')
+        if not folder_path.exists():
+            Path.mkdir(folder_path)
+        self.logger.info('Salvando PDF %s', file_path)
+        with open(file_path, 'wb') as f:
             f.write(response.body)
 
     def clean_folder(self):
-        folder = os.path.join(SPIDER_DIR, "bula_download")
-        if os.path.exists(folder):
-            shutil.rmtree(folder)
-
-class AutocompleteSpider(scrapy.Spider):
-    name = 'autocomplete'
-    start_urls = [
-        'http://www.anvisa.gov.br/datavisa/fila_bula/funcoes/ajax.asp?opcao=getsuggestion&ptipo=1'
-    ]
-
-    def parse(self, response):
-        suggestions_list = response.text.split(',')
-        self.logger.info('%d sugestoes de medicamentos encontradas', len(suggestions_list))
-        self.save_to_file(suggestions_list)
-
-    def save_to_file(self, suggestions_list):
-        folder = 'autocomplete'
-        filepath = os.path.join(SPIDER_DIR, folder, 'medicamentos.txt')
-        if not os.path.exists(os.path.join(SPIDER_DIR, folder)):
-            os.makedirs(os.path.join(SPIDER_DIR, folder))
-        self.logger.info('Salvando arquivo %s', filepath)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            for suggestion in suggestions_list:
-                f.write(suggestion.replace('"','').replace('[','').replace(']',''))
-                f.write('\n')
-
-configure_logging()
-runner = CrawlerRunner()
-
-@defer.inlineCallbacks
-def crawl():
-    yield runner.crawl(AutocompleteSpider)
-    yield runner.crawl(AnvisaSpider, search=sys.argv[1])
-    reactor.stop()
-
-crawl()
-reactor.run() # the script will block here until the last crawl call is finished
+        folder_path = CURRENT_FOLDER / 'bula_download'
+        if folder_path.exists():
+            shutil.rmtree(folder_path)
