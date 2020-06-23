@@ -1,7 +1,6 @@
 import scrapy
 import re
 import pdb
-import shutil
 from autocompletespider import AutocompleteSpider
 from pathlib import Path
 
@@ -129,4 +128,7 @@ class AnvisaSpider(scrapy.Spider):
     def clean_folder(self):
         folder_path = CURRENT_FOLDER / 'bula_download'
         if folder_path.exists():
-            shutil.rmtree(folder_path)
+            files = folder_path.glob('**/*')
+            for f in files:
+                if f.is_file():
+                    f.unlink()
