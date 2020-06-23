@@ -1,4 +1,5 @@
 .vscode/
+pdfreader/pdf_content/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
