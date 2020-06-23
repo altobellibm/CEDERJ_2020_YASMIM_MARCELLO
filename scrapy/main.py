@@ -16,5 +16,8 @@ def crawl():
     yield runner.crawl(AnvisaSpider, search=sys.argv[1])
     reactor.stop()
 
-crawl()
-reactor.run() # the script will block here until the last crawl call is finished
+if len(sys.argv) >= 2:
+    crawl()
+    reactor.run() # the script will block here until the last crawl call is finished
+else:
+    raise Exception('Indique o parametro de busca do medicamento')
