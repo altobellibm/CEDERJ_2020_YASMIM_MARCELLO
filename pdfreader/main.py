@@ -8,7 +8,7 @@ import os
 import pdb
 import json
 
-CURRENT_FILE_PATH = os.path.abspath(os.path.dirname(__file__))
+CURRENT_FILE_PATH = Path(__file__).parent
 
 def convert_pdf_to_txt(path):
     pdf_resource_manager = PDFResourceManager()
@@ -41,78 +41,105 @@ def write_to_file(path, mode, content):
         f.write(content)
 
 def get_formulation(text_section):
-    section_start_string = 'Cada '
-    section_end_string = ' contém'
+    section_start_string = 'cada '
+    section_end_string_list = [' contém', ' contem']
     formulation_start = text_section.find(section_start_string)
-    formulation_end = text_section.find(section_end_string)
-    return text_section[(formulation_start + len(section_start_string)) : formulation_end]
+    if formulation_start > -1:
+        formulation_end = text_section.find(section_end_string_list[0])
+        if not formulation_end > -1:
+            formulation_end = text_section.find(section_end_string_list[1])
+            return text_section[(formulation_start + len(section_start_string)) : formulation_end]
+
+    return ''
+
+def clean_folder(path, folder):
+    folder_path = CURRENT_FILE_PATH / folder
+    if folder_path.exists():
+        files = folder_path.glob('**/*')
+        for f in files:
+            if f.is_file():
+                f.unlink()
 
 def get_excipient(text_section):
-    result = []
-    ## CASO 1
-    search_string = 'Excipientes: '
+    ## CASO 1 [Excipientes:, .]
+    text_section = text_section.lower()
+    search_string = 'excipientes:'
     section_start = text_section.find(search_string)
     section_end = text_section.find('.', section_start)
     if section_start > -1 and section_end > -1:
         excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
         excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(', ')]
-        result.append(excipient_list)
-    else:
-        ## CASO 2
-        search_string = 'Excipiente: '
-        section_start = text_section.find(search_string)
-        section_end = text_section.find('.', section_start)
-        if section_start > -1:
+        return excipient_list
+
+    ## CASO 2 ['excipiente: ', .]
+    search_string = 'excipiente:'
+    section_start = text_section.find(search_string)
+    section_end = text_section.find('.', section_start)
+    if section_start > -1:
+        if section_end > -1:
+            #tentando achar o final por quebra de linha
+            section_end = text_section.find('\n\n', section_start)
+            if section_end < 0:
+                section_end = text_section.find('\n \n', section_start)
             if section_end > -1:
-                #tentando achar o final por quebra de linha
-                section_end = text_section.find('\n\n', section_start)
-                if section_end < 0:
-                    section_end = text_section.find('\n \n', section_start)
-                if section_end > -1:
-                    #final eh ponto
-                    excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
-                    excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(', ')]
-                    result.append(excipient_list)
-        else:
-            ## CASO 3
-            search_string = 'excipientes* '
-            string_occurrence = text_section.find(search_string)
-            if string_occurrence > -1:
-                start_string = '*'
-                section_start = text_section.find(start_string, (string_occurrence + len(search_string)))
-                section_end = text_section.find('.', section_start)
-                if section_start > -1 and section_end > -1:
-                    excipient_as_text = text_section[(section_start + len(start_string)) : section_end]
-                    excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(', ')]
-                    result.append(excipient_list)
-    return result
+                #final eh ponto
+                excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
+                excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(', ')]
+                return excipient_list
+
+    ## CASO 3 excipientes*
+    search_string = 'excipientes*'
+    string_occurrence = text_section.find(search_string)
+    if string_occurrence > -1:
+        start_string = '*'
+        section_start = text_section.find(start_string, (string_occurrence + len(search_string)))
+        section_end = text_section.find('.', section_start)
+        if section_start > -1 and section_end > -1:
+            excipient_as_text = text_section[(section_start + len(start_string)) : section_end]
+            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(', ')]
+            return excipient_list
+
+    ## CASO 3 veículos:
+    search_string = 'veículos:'
+    section_start = text_section.find(search_string)
+    section_end = text_section.find('.', section_start)
+    if section_start > -1 and section_end > -1:
+        excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
+        excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split('; ')]
+        return excipient_list
+
+    return []
 
 pdf_files_dir = Path(CURRENT_FILE_PATH, os.pardir, "scrapy", "bula_download")
 txt_files_dir = os.path.join(CURRENT_FILE_PATH, "pdf_content")
+clean_folder(txt_files_dir, 'pdf_content')
+composition = 'composição'
+technical_info = 'informações técnicas'
+indications = 'indicações'
 for filename in os.listdir(pdf_files_dir):
     filename_wo_extension = os.path.splitext(filename)[0]
     txt_file_path = Path(txt_files_dir+'/'+filename_wo_extension).with_suffix('.txt')
     print('**** Arquivo ' + filename + ' ****')
     clean_file(txt_file_path)
-    pdf_text_content = convert_pdf_to_txt(os.path.abspath(os.path.join(pdf_files_dir, filename)))
+    pdf_text_content = convert_pdf_to_txt(os.path.abspath(os.path.join(pdf_files_dir, filename))).lower()
     print('PDF lido')
-    composition_occurrences_amount = pdf_text_content.count('COMPOSIÇÃO')
-    technical_info_occurrences_amount = pdf_text_content.count('INFORMAÇÕES TÉCNICAS')
+    composition_occurrences_amount = pdf_text_content.count(composition)
+    technical_info_occurrences_amount = pdf_text_content.count(technical_info)
     composition_start_index = 0
     composition_end_index = 0
     for i in range(min(composition_occurrences_amount, technical_info_occurrences_amount)):
-        composition_start_index = pdf_text_content.find('COMPOSIÇÃO', composition_start_index+1)
+        composition_start_index = pdf_text_content.find(composition, composition_start_index + 1)
         print('Range start: ' + str(composition_start_index))
-        composition_end_index = pdf_text_content.find('INFORMAÇÕES TÉCNICAS', composition_start_index+1)
+        composition_end_index = pdf_text_content.find(technical_info, composition_start_index + 1)
         print('Range end: ' + str(composition_end_index))
         if composition_end_index < composition_start_index:
             #se cairmos aqui eh devido ao 'informacoes tecnicas' vir antes da 'composicao'
             #neste caso, devemos procurar por 'indicacoes' para delimitar o fim da secao desejada
-            composition_end_index = pdf_text_content.find('INDICAÇÕES')
+            composition_end_index = pdf_text_content.find(indications)
             print('Range end ajustado: ' + str(composition_end_index))
         if composition_end_index > composition_start_index:
             #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
             composition_section = pdf_text_content[composition_start_index : composition_end_index]
             write_to_file(txt_file_path, 'a', composition_section)
-            write_to_file(txt_file_path, 'a', '\nFORMULAÇÃO: '+get_formulation(composition_section)+'\n')
-            write_to_file(txt_file_path, 'a', '\nEXCIPIENTES: '+str(get_excipient(composition_section))+'\n')
+            write_to_file(txt_file_path, 'a', '\nFORMULAÇÃO: ' + get_formulation(composition_section) + '\n')
+            write_to_file(txt_file_path, 'a', '\nEXCIPIENTES: ' + str(get_excipient(composition_section)) + '\n')
