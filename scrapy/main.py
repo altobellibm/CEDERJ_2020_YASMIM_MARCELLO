@@ -12,7 +12,7 @@ runner = CrawlerRunner()
 
 @defer.inlineCallbacks
 def crawl():
-    #yield runner.crawl(AutocompleteSpider)
+    yield runner.crawl(AutocompleteSpider)
     yield runner.crawl(AnvisaBularioSpider, search=sys.argv[1])
     reactor.stop()
 
