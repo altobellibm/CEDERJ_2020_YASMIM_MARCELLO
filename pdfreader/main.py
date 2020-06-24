@@ -48,6 +48,7 @@ def get_formulation(text_section):
         formulation_end = text_section.find(section_end_string_list[0])
         if not formulation_end > -1:
             formulation_end = text_section.find(section_end_string_list[1])
+        if formulation_end > -1:
             return text_section[(formulation_start + len(section_start_string)) : formulation_end]
 
     return ''
