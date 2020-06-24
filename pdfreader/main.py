@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 import pdb
 import json
+import re
 
 CURRENT_FILE_PATH = Path(__file__).parent
 
@@ -61,6 +62,9 @@ def clean_folder(path, folder):
             if f.is_file():
                 f.unlink()
 
+def clean_string(text):
+    return re.sub('[\n.()]', '', text).strip()
+
 def get_excipient(text_section):
     ## CASO 1 [Excipientes:, .]
     text_section = text_section.lower()
@@ -76,11 +80,11 @@ def get_excipient(text_section):
             if section_end > -1:
                 #final encontrado
                 excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
-                excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+                excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
                 return excipient_list
         else:
             excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
-            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
             return excipient_list
 
     ## CASO 2 ['excipiente: ', .]
@@ -95,11 +99,11 @@ def get_excipient(text_section):
             if section_end > -1:
                 #final encontrado
                 excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
-                excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+                excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
                 return excipient_list
         else:
             excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
-            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
             return excipient_list
 
     ## CASO 3 excipientes*
@@ -111,7 +115,7 @@ def get_excipient(text_section):
         section_end = text_section.find('.', section_start)
         if section_start > -1 and section_end > -1:
             excipient_as_text = text_section[(section_start + len(start_string)) : section_end]
-            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
             return excipient_list
 
 
@@ -121,7 +125,7 @@ def get_excipient(text_section):
     section_end = text_section.find('.', section_start)
     if section_start > -1 and section_end > -1:
         excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
-        excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(';')]
+        excipient_list = [clean_string(x) for x in excipient_as_text.split(';')]
         return excipient_list
 
 
@@ -134,7 +138,7 @@ def get_excipient(text_section):
         section_end = text_section.find('.', section_start)
         if section_start > -1 and section_end > -1:
             excipient_as_text = text_section[(section_start + len(start_string)) : section_end]
-            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
             return excipient_list
 
 
@@ -147,7 +151,7 @@ def get_excipient(text_section):
         section_end = text_section.find(')', section_start)
         if section_start > -1 and section_end > -1:
             excipient_as_text = text_section[(section_start + len(start_string)) : section_end]
-            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
             return excipient_list
 
 
@@ -160,7 +164,7 @@ def get_excipient(text_section):
         section_end = text_section.find(')', section_start)
         if section_start > -1 and section_end > -1:
             excipient_as_text = text_section[(section_start + len(start_string)) : section_end]
-            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
             return excipient_list
 
 
@@ -173,8 +177,9 @@ def get_excipient(text_section):
         section_end = text_section.find(')', section_start)
         if section_start > -1 and section_end > -1:
             excipient_as_text = text_section[(section_start + len(start_string)) : section_end]
-            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
             return excipient_list
+
 
     return []
 
