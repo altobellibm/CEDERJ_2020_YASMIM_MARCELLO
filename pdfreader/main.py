@@ -67,26 +67,42 @@ def get_excipient(text_section):
     search_string = 'excipientes:'
     section_start = text_section.find(search_string)
     section_end = text_section.find('.', section_start)
-    if section_start > -1 and section_end > -1:
-        excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
-        excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
-        return excipient_list
+    if section_start > -1:
+        if not section_end > -1:
+            #tentando achar o final por quebra de linha
+            section_end = text_section.find('\n\n', section_start)
+            if not section_end > -1:
+                section_end = text_section.find('\n \n', section_start)
+            if section_end > -1:
+                #final encontrado
+                excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
+                excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+                return excipient_list
+        else:
+            excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
+            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            return excipient_list
 
     ## CASO 2 ['excipiente: ', .]
     search_string = 'excipiente:'
     section_start = text_section.find(search_string)
     section_end = text_section.find('.', section_start)
     if section_start > -1:
-        if section_end > -1:
+        if not section_end > -1:
             #tentando achar o final por quebra de linha
             section_end = text_section.find('\n\n', section_start)
-            if section_end < 0:
+            if not section_end > -1:
                 section_end = text_section.find('\n \n', section_start)
             if section_end > -1:
-                #final eh ponto
+                #final encontrado
                 excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
                 excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
                 return excipient_list
+        else:
+            excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
+            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            return excipient_list
+
 
     ## CASO 3 excipientes*
     search_string = 'excipientes*'
@@ -100,6 +116,7 @@ def get_excipient(text_section):
             excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
             return excipient_list
 
+
     ## CASO 4 veículos:
     search_string = 'veículos:'
     section_start = text_section.find(search_string)
@@ -108,6 +125,7 @@ def get_excipient(text_section):
         excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
         excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(';')]
         return excipient_list
+
 
     ## CASO 5 excipiente**
     search_string = 'excipiente**'
@@ -121,7 +139,8 @@ def get_excipient(text_section):
             excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
             return excipient_list
 
-    ## CASO 6 excipientes (
+
+    ## CASO 6 excipientes ... (
     search_string = 'excipientes'
     string_occurrence = text_section.find(search_string)
     if string_occurrence > -1:
@@ -132,6 +151,7 @@ def get_excipient(text_section):
             excipient_as_text = text_section[(section_start + len(start_string)) : section_end]
             excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
             return excipient_list
+
 
     ## CASO 7 excipiente ... (
     search_string = 'excipiente'
