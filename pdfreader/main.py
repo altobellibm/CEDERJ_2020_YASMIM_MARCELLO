@@ -165,6 +165,19 @@ def get_excipient(text_section):
             excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
             return excipient_list
 
+
+    ## CASO 8 veículo ... (
+    search_string = 'veículo'
+    string_occurrence = text_section.find(search_string)
+    if string_occurrence > -1:
+        start_string = '('
+        section_start = text_section.find(start_string, (string_occurrence + len(search_string)))
+        section_end = text_section.find(')', section_start)
+        if section_start > -1 and section_end > -1:
+            excipient_as_text = text_section[(section_start + len(start_string)) : section_end]
+            excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
+            return excipient_list
+
     return []
 
 pdf_files_dir = CURRENT_FILE_PATH.parent / "scrapy" / "bula_download"
