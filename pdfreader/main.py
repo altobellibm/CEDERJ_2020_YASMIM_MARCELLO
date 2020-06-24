@@ -64,15 +64,15 @@ def clean_folder(path, folder):
 def get_excipient(text_section):
     ## CASO 1 [Excipientes:, .]
     text_section = text_section.lower()
+    line_breaks = ['\n\n', '\n \n']
     search_string = 'excipientes:'
     section_start = text_section.find(search_string)
-    section_end = text_section.find('.', section_start)
     if section_start > -1:
+        section_end = text_section.find(line_breaks[0], section_start)
         if not section_end > -1:
-            #tentando achar o final por quebra de linha
-            section_end = text_section.find('\n\n', section_start)
+            section_end = text_section.find(line_breaks[1], section_start)
             if not section_end > -1:
-                section_end = text_section.find('\n \n', section_start)
+                section_end = text_section.find('.', section_start)
             if section_end > -1:
                 #final encontrado
                 excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
@@ -86,13 +86,12 @@ def get_excipient(text_section):
     ## CASO 2 ['excipiente: ', .]
     search_string = 'excipiente:'
     section_start = text_section.find(search_string)
-    section_end = text_section.find('.', section_start)
     if section_start > -1:
+        section_end = text_section.find(line_breaks[0], section_start)
         if not section_end > -1:
-            #tentando achar o final por quebra de linha
-            section_end = text_section.find('\n\n', section_start)
+            section_end = text_section.find(line_breaks[1], section_start)
             if not section_end > -1:
-                section_end = text_section.find('\n \n', section_start)
+                section_end = text_section.find('.', section_start)
             if section_end > -1:
                 #final encontrado
                 excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
@@ -102,7 +101,6 @@ def get_excipient(text_section):
             excipient_as_text = text_section[(section_start + len(search_string)) : section_end]
             excipient_list = [x.replace('\n', '').strip() for x in excipient_as_text.split(',')]
             return excipient_list
-
 
     ## CASO 3 excipientes*
     search_string = 'excipientes*'
