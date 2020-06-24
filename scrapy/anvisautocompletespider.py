@@ -4,8 +4,8 @@ from pathlib import Path
 
 CURRENT_FOLDER = Path(__file__).parent
 
-class AutocompleteSpider(scrapy.Spider):
-    name = 'autocomplete'
+class AnvisaAutocompleteSpider(scrapy.Spider):
+    name = 'anvisa_autocomplete'
     start_urls = [
         'http://www.anvisa.gov.br/datavisa/fila_bula/funcoes/ajax.asp?opcao=getsuggestion&ptipo=1'
     ]

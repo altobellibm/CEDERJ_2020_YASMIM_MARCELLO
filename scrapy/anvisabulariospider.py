@@ -1,13 +1,14 @@
 import scrapy
 import re
 import pdb
-from autocompletespider import AutocompleteSpider
+import unicodedata
 from pathlib import Path
 
 CURRENT_FOLDER = Path(__file__).parent
 
-class AnvisaSpider(scrapy.Spider):
-    name = 'anvisa'
+class AnvisaBularioSpider(scrapy.Spider):
+    name = 'anvisa_bulario'
+    request_encoding = 'cp1252'
 
     def start_requests(self):
         if not hasattr(self, "search"):
@@ -20,7 +21,6 @@ class AnvisaSpider(scrapy.Spider):
                 if not suggestion_list:
                     raise Exception('Nenhum resultado disponivel para a busca')
                 for suggestion in suggestion_list:
-
                     first_page = 1
                     page_size = 10
                     self.clean_folder()
@@ -35,6 +35,7 @@ class AnvisaSpider(scrapy.Spider):
                             'X-Med-Search': suggestion,
                             'X-Page-Size': str(page_size)
                         },
+                        encoding=self.request_encoding,
                         callback=self.crawl_result
                     )
             else:
@@ -69,11 +70,12 @@ class AnvisaSpider(scrapy.Spider):
                         'pIdAnexo': attachment_number
                     },
                     headers={'X-Attachment-Number': attachment_number},
+                    encoding=self.request_encoding,
                     callback=self.save_pdf
                 )
             #proxima pagina
-            search = response.request.headers['X-Med-Search'].decode("utf-8")
-            page_size = response.request.headers['X-Page-Size'].decode("utf-8")
+            search = response.request.headers['X-Med-Search'].decode(self.request_encoding)
+            page_size = response.request.headers['X-Page-Size'].decode(self.request_encoding)
             next_page_as_str = str(current_page+1)
             yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
                 formdata={
@@ -86,6 +88,7 @@ class AnvisaSpider(scrapy.Spider):
                     'X-Med-Search': search,
                     'X-Page-Size': page_size
                 },
+                encoding=self.request_encoding,
                 callback=self.crawl_result
             )
 
