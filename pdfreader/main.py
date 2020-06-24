@@ -110,36 +110,37 @@ def get_excipient(text_section):
 
     return []
 
-pdf_files_dir = Path(CURRENT_FILE_PATH, os.pardir, "scrapy", "bula_download")
-txt_files_dir = os.path.join(CURRENT_FILE_PATH, "pdf_content")
+pdf_files_dir = CURRENT_FILE_PATH.parent / "scrapy" / "bula_download"
+txt_files_dir = CURRENT_FILE_PATH / "pdf_content"
 clean_folder(txt_files_dir, 'pdf_content')
 composition = 'composição'
 technical_info = 'informações técnicas'
 indications = 'indicações'
-for filename in os.listdir(pdf_files_dir):
-    filename_wo_extension = os.path.splitext(filename)[0]
-    txt_file_path = Path(txt_files_dir+'/'+filename_wo_extension).with_suffix('.txt')
-    print('**** Arquivo ' + filename + ' ****')
-    clean_file(txt_file_path)
-    pdf_text_content = convert_pdf_to_txt(os.path.abspath(os.path.join(pdf_files_dir, filename))).lower()
-    print('PDF lido')
-    composition_occurrences_amount = pdf_text_content.count(composition)
-    technical_info_occurrences_amount = pdf_text_content.count(technical_info)
-    composition_start_index = 0
-    composition_end_index = 0
-    for i in range(min(composition_occurrences_amount, technical_info_occurrences_amount)):
-        composition_start_index = pdf_text_content.find(composition, composition_start_index + 1)
-        print('Range start: ' + str(composition_start_index))
-        composition_end_index = pdf_text_content.find(technical_info, composition_start_index + 1)
-        print('Range end: ' + str(composition_end_index))
-        if composition_end_index < composition_start_index:
-            #se cairmos aqui eh devido ao 'informacoes tecnicas' vir antes da 'composicao'
-            #neste caso, devemos procurar por 'indicacoes' para delimitar o fim da secao desejada
-            composition_end_index = pdf_text_content.find(indications)
-            print('Range end ajustado: ' + str(composition_end_index))
-        if composition_end_index > composition_start_index:
-            #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
-            composition_section = pdf_text_content[composition_start_index : composition_end_index]
-            write_to_file(txt_file_path, 'a', composition_section)
-            write_to_file(txt_file_path, 'a', '\nFORMULAÇÃO: ' + get_formulation(composition_section) + '\n')
-            write_to_file(txt_file_path, 'a', '\nEXCIPIENTES: ' + str(get_excipient(composition_section)) + '\n')
+for file in pdf_files_dir.glob('*'):
+    if file.is_file():
+        filename_wo_extension = file.stem
+        txt_file_path = (txt_files_dir / filename_wo_extension).with_suffix('.txt')
+        print('**** Arquivo ' + str(file) + ' ****')
+        clean_file(txt_file_path)
+        pdf_text_content = convert_pdf_to_txt(file).lower()
+        print('PDF lido')
+        composition_occurrences_amount = pdf_text_content.count(composition)
+        technical_info_occurrences_amount = pdf_text_content.count(technical_info)
+        composition_start_index = 0
+        composition_end_index = 0
+        for i in range(min(composition_occurrences_amount, technical_info_occurrences_amount)):
+            composition_start_index = pdf_text_content.find(composition, composition_start_index + 1)
+            print('Range start: ' + str(composition_start_index))
+            composition_end_index = pdf_text_content.find(technical_info, composition_start_index + 1)
+            print('Range end: ' + str(composition_end_index))
+            if composition_end_index < composition_start_index:
+                #se cairmos aqui eh devido ao 'informacoes tecnicas' vir antes da 'composicao'
+                #neste caso, devemos procurar por 'indicacoes' para delimitar o fim da secao desejada
+                composition_end_index = pdf_text_content.find(indications)
+                print('Range end ajustado: ' + str(composition_end_index))
+            if composition_end_index > composition_start_index:
+                #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
+                composition_section = pdf_text_content[composition_start_index : composition_end_index]
+                write_to_file(txt_file_path, 'a', composition_section)
+                write_to_file(txt_file_path, 'a', '\nFORMULAÇÃO: ' + get_formulation(composition_section) + '\n')
+                write_to_file(txt_file_path, 'a', '\nEXCIPIENTES: ' + str(get_excipient(composition_section)) + '\n')
