@@ -182,18 +182,18 @@ def get_excipient(text_section):
 
     return []
 
-pdf_files_dir = CURRENT_FILE_PATH.parent / "scrapy" / "bula_download"
-txt_files_dir = CURRENT_FILE_PATH / "pdf_content"
-clean_folder(txt_files_dir, 'pdf_content')
+input_files_dir = CURRENT_FILE_PATH.parent / "scrapy" / "bula_download"
+output_files_dir = CURRENT_FILE_PATH / "pdf_content"
+clean_folder(output_files_dir, 'pdf_content')
 composition = 'composição'
 technical_info_list = ['informações técnicas', 'informações ao profissional']
 indications = 'indicações'
-for file in pdf_files_dir.glob('*'):
+for file in input_files_dir.glob('*'):
     if file.is_file():
         filename_wo_extension = file.stem
-        txt_file_path = (txt_files_dir / filename_wo_extension).with_suffix('.txt')
+        output_file_path = (output_files_dir / filename_wo_extension).with_suffix('.json')
         print('**** Arquivo ' + str(file) + ' ****')
-        clean_file(txt_file_path)
+        clean_file(output_file_path)
         pdf_text_content = convert_pdf_to_txt(file).lower()
         print('PDF lido')
         composition_occurrences_amount = pdf_text_content.count(composition)
@@ -218,9 +218,8 @@ for file in pdf_files_dir.glob('*'):
             if composition_end_index > composition_start_index:
                 #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
                 composition_section = pdf_text_content[composition_start_index : composition_end_index]
-                #write_to_file(txt_file_path, 'a', composition_section)
                 output = {
                     "formulacao": get_formulation(composition_section),
                     "excipientes": str(get_excipient(composition_section))
                 }
-                write_to_file(txt_file_path, 'a', json.dumps(output, indent=4))
+                write_to_file(output_file_path, 'a', json.dumps(output, indent=4))
