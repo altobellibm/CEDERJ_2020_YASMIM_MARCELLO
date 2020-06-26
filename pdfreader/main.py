@@ -72,9 +72,10 @@ def get_double_line_break_index(text, start_index):
         index = text.find(line_breaks[1], start_index)
     return index
 
-def parse_excipient_list(text, start_string, start_index, end_index):
+def parse_excipient_list(text, start_string, start_index, end_index, separator):
     excipient_as_text = text[(start_index + len(start_string)) : end_index]
-    excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
+    excipient_as_text = excipient_as_text.replace(' e ', separator)
+    excipient_list = [clean_string(x) for x in excipient_as_text.split(separator)]
     return excipient_list
 
 def get_excipient(text_section):
@@ -88,15 +89,10 @@ def get_excipient(text_section):
             section_end_index = text_section.find('.', section_start_index)
             if section_end_index > -1:
                 #final encontrado
-                #parse_excipient_list(text_section, search_string, section_start_index, section_end_index)
-                excipient_as_text = text_section[(section_start_index + len(search_string)) : section_end_index]
-                excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-                return excipient_list
+                return parse_excipient_list(text_section, search_string, section_start_index, section_end_index, ',')
         else:
-            #parse_excipient_list(text_section, search_string, section_start_index, section_end_index)
-            excipient_as_text = text_section[(section_start_index + len(search_string)) : section_end_index]
-            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-            return excipient_list
+            #final encontrado
+            return parse_excipient_list(text_section, search_string, section_start_index, section_end_index, ',')
 
     ## CASO 2 ['excipiente: ', .]
     search_string = 'excipiente:'
@@ -107,13 +103,10 @@ def get_excipient(text_section):
             section_end_index = text_section.find('.', section_start_index)
             if section_end_index > -1:
                 #final encontrado
-                excipient_as_text = text_section[(section_start_index + len(search_string)) : section_end_index]
-                excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-                return excipient_list
+                return parse_excipient_list(text_section, search_string, section_start_index, section_end_index, ',')
         else:
-            excipient_as_text = text_section[(section_start_index + len(search_string)) : section_end_index]
-            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-            return excipient_list
+            #final encontrado
+            return parse_excipient_list(text_section, search_string, section_start_index, section_end_index, ',')
 
     ## CASO 3 excipientes*
     search_string = 'excipientes*'
@@ -123,9 +116,7 @@ def get_excipient(text_section):
         section_start_index = text_section.find(start_string, (string_occurrence + len(search_string)))
         section_end_index = text_section.find('.', section_start_index)
         if section_start_index > -1 and section_end_index > -1:
-            excipient_as_text = text_section[(section_start_index + len(start_string)) : section_end_index]
-            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-            return excipient_list
+            return parse_excipient_list(text_section, start_string, section_start_index, section_end_index, ',')
 
 
     ## CASO 4 veículos:
@@ -133,9 +124,7 @@ def get_excipient(text_section):
     section_start_index = text_section.find(search_string)
     section_end_index = text_section.find('.', section_start_index)
     if section_start_index > -1 and section_end_index > -1:
-        excipient_as_text = text_section[(section_start_index + len(search_string)) : section_end_index]
-        excipient_list = [clean_string(x) for x in excipient_as_text.split(';')]
-        return excipient_list
+        return parse_excipient_list(text_section, search_string, section_start_index, section_end_index, ';')
 
 
     ## CASO 5 excipiente**
@@ -146,9 +135,7 @@ def get_excipient(text_section):
         section_start_index = text_section.find(start_string, (string_occurrence + len(search_string)))
         section_end_index = text_section.find('.', section_start_index)
         if section_start_index > -1 and section_end_index > -1:
-            excipient_as_text = text_section[(section_start_index + len(start_string)) : section_end_index]
-            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-            return excipient_list
+            return parse_excipient_list(text_section, start_string, section_start_index, section_end_index, ',')
 
 
     ## CASO 6 excipientes ... (
@@ -159,9 +146,7 @@ def get_excipient(text_section):
         section_start_index = text_section.find(start_string, (string_occurrence + len(search_string)))
         section_end_index = text_section.find(')', section_start_index)
         if section_start_index > -1 and section_end_index > -1:
-            excipient_as_text = text_section[(section_start_index + len(start_string)) : section_end_index]
-            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-            return excipient_list
+            return parse_excipient_list(text_section, start_string, section_start_index, section_end_index, ',')
 
 
     ## CASO 7 excipiente ... (
@@ -172,9 +157,7 @@ def get_excipient(text_section):
         section_start_index = text_section.find(start_string, (string_occurrence + len(search_string)))
         section_end_index = text_section.find(')', section_start_index)
         if section_start_index > -1 and section_end_index > -1:
-            excipient_as_text = text_section[(section_start_index + len(start_string)) : section_end_index]
-            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-            return excipient_list
+            return parse_excipient_list(text_section, start_string, section_start_index, section_end_index, ',')
 
 
     ## CASO 8 veículo ... (
@@ -185,9 +168,7 @@ def get_excipient(text_section):
         section_start_index = text_section.find(start_string, (string_occurrence + len(search_string)))
         section_end_index = text_section.find(')', section_start_index)
         if section_start_index > -1 and section_end_index > -1:
-            excipient_as_text = text_section[(section_start_index + len(start_string)) : section_end_index]
-            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-            return excipient_list
+            return parse_excipient_list(text_section, start_string, section_start_index, section_end_index, ',')
 
     ## CASO 9 contém quantidade suficiente de ... como
     search_string = 'quantidade suficiente de'
@@ -197,9 +178,7 @@ def get_excipient(text_section):
         section_start_index = text_section.find(start_string, (string_occurrence + len(search_string)))
         section_end_index = text_section.find('como', section_start_index)
         if section_start_index > -1 and section_end_index > -1:
-            excipient_as_text = text_section[(section_start_index + len(start_string)) : section_end_index]
-            excipient_list = [clean_string(x) for x in excipient_as_text.split(',')]
-            return excipient_list
+            return parse_excipient_list(text_section, start_string, section_start_index, section_end_index, ',')
 
     return []
 
@@ -239,6 +218,9 @@ for file in pdf_files_dir.glob('*'):
             if composition_end_index > composition_start_index:
                 #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
                 composition_section = pdf_text_content[composition_start_index : composition_end_index]
-                write_to_file(txt_file_path, 'a', composition_section)
-                write_to_file(txt_file_path, 'a', '\nFORMULAÇÃO: ' + get_formulation(composition_section) + '\n')
-                write_to_file(txt_file_path, 'a', '\nEXCIPIENTES: ' + str(get_excipient(composition_section)) + '\n')
+                #write_to_file(txt_file_path, 'a', composition_section)
+                output = {
+                    "formulacao": get_formulation(composition_section),
+                    "excipientes": str(get_excipient(composition_section))
+                }
+                write_to_file(txt_file_path, 'a', json.dumps(output, indent=4))
