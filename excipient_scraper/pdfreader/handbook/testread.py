@@ -36,9 +36,26 @@ def write_to_file(path, mode, content):
 #pagina real = pagina do sumario + 29
 summary_pages = [5, 6, 7, 8, 9]
 #summary_pages = [5]
-summary = convert_pdf_to_txt(Path(__file__).parent / "Handbook-of-Pharmaceutical-Excipients_6t.pdf", summary_pages)
+summary = convert_pdf_to_txt(Path(__file__).parent / 'Handbook-of-Pharmaceutical-Excipients_6t.pdf', summary_pages)
 summary_garbage_end_string = 'Monographs\n'
 summary_garbage_end_index = summary.find(summary_garbage_end_string)
 summary = summary[(summary_garbage_end_index + len(summary_garbage_end_string)):]
-write_to_file(Path(__file__).parent / "summary.txt", 'w', summary)
+write_to_file(Path(__file__).parent / 'summary.txt', 'w', summary)
+summary_dict = {}
+real_page_offset = 29
+with open(Path(__file__).parent / 'summary.txt', 'r', encoding='utf-8') as f:
+    for line in f.readlines():
+        if not 'Appendix' in line and not 'Contents' in line:
+            line = line.rstrip('\n').strip('\f')
+            last_space_index = line.rfind(' ')
+            excipient = line[:last_space_index]
+            pageno = line[last_space_index+1:]
+            if len(excipient) > 0 and len(pageno) > 0:
+                summary_dict[excipient] = pageno
+
+with open(Path(__file__).parent / 'summary.json', 'w', encoding='utf-8') as f:
+    f.write(json.dumps(summary_dict, indent=4))
+
+#for line in summary:
+
 parei = 'a'
