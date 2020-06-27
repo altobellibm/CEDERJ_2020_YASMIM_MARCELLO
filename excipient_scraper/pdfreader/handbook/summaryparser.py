@@ -44,7 +44,7 @@ class SummaryParser:
         summary = summary[(summary_garbage_end_index + len(summary_garbage_end_string)):]
         self.write_to_file(Path(__file__).parent / 'summary.txt', 'w', summary)
         summary_dict = {}
-        real_page_offset = 29
+        real_page_offset = 28
         txt_output = Path(__file__).parent / 'summary.txt'
         with open(txt_output, encoding='utf-8') as f:
             for line in f.readlines():
