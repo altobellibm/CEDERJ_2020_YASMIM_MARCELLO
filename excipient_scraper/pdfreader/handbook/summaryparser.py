@@ -45,7 +45,8 @@ class SummaryParser:
         self.write_to_file(Path(__file__).parent / 'summary.txt', 'w', summary)
         summary_dict = {}
         real_page_offset = 29
-        with open(Path(__file__).parent / 'summary.txt', 'r', encoding='utf-8') as f:
+        txt_output = Path(__file__).parent / 'summary.txt'
+        with open(txt_output, encoding='utf-8') as f:
             for line in f.readlines():
                 if not 'Appendix' in line and not 'Contents' in line:
                     line = line.rstrip('\n').strip('\f')
@@ -58,8 +59,10 @@ class SummaryParser:
                         except:
                             summary_dict[excipient] = pageno
         print('Apendices e cabecalhos removidos')
+        txt_output.unlink()
 
-        with open(Path(__file__).parent / 'summary.json', 'w', encoding='utf-8') as f:
+        json_output = Path(__file__).parent / 'summary.json'
+        with open(json_output, 'w', encoding='utf-8') as f:
             f.write(json.dumps(summary_dict, indent=4))
 
-        print('Fim da conversao do sumario. Resultado em', Path(__file__).parent / 'summary.json')
+        print('Fim da conversao do sumario. Resultado em', json_output)
