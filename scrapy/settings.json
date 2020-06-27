@@ -1,5 +1,0 @@
-{
-    "autocomplete_medicamentos": {
-        "url": "http://www.anvisa.gov.br/datavisa/fila_bula/funcoes/ajax.asp?opcao=getsuggestion&ptipo=1"
-    }
-}
