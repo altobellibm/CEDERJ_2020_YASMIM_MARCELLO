@@ -55,9 +55,9 @@ class SummaryParser:
                     pageno = line[last_space_index+1:]
                     if len(excipient) > 0 and len(pageno) > 0:
                         try:
-                            summary_dict[excipient] = int(pageno) + real_page_offset
+                            summary_dict[excipient.lower()] = int(pageno) + real_page_offset
                         except:
-                            summary_dict[excipient] = pageno
+                            summary_dict[excipient.lower()] = pageno
         print('Apendices e cabecalhos removidos')
         txt_output.unlink()
 

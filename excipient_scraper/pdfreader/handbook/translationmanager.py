@@ -5,6 +5,7 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from io import StringIO
 from pathlib import Path
+#from excipient_scraper.filemanager import FileManager
 import os
 import pdb
 import json
@@ -28,7 +29,7 @@ class TranslationManager:
                     output_file.write(json.dumps(original_json, indent=4))
                 print('Arquivo ', file.name, ' traduzido')
 
-    def clean_folder(self, path):
+    def clean_folder_recursive(self, path):
         if path.exists():
             if path.is_dir():
                 files = path.glob('**/*')
@@ -56,5 +57,5 @@ class TranslationManager:
 
     def translate(self):
         output_files_dir = CURRENT_FILE_PATH / "translated_content"
-        self.clean_folder(output_files_dir)
+        self.clean_folder_recursive(output_files_dir)
         self.translate_excipients(CURRENT_FILE_PATH.parent / "bulas" / "pdf_content", CURRENT_FILE_PATH / "translated_content")
