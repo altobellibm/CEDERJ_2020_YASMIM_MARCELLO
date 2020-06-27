@@ -1,8 +1,8 @@
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-from pdfminer.converter import TextConverter
+from pdfminer.converter import TextConverter, HTMLConverter, XMLConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
-from io import StringIO
+from io import StringIO, BytesIO
 from pathlib import Path
 import os
 import pdb
@@ -27,6 +27,31 @@ class ProportionParser:
         retstr.close()
         return text
 
+    def convert_pdf(self, path, format='text', codec='utf-8', password='', pagenos=set()):
+        rsrcmgr = PDFResourceManager()
+        retstr = BytesIO()
+        laparams = LAParams()
+        if format == 'text':
+            device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
+        elif format == 'html':
+            device = HTMLConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
+        elif format == 'xml':
+            device = XMLConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
+        else:
+            raise ValueError('provide format, either text, html or xml!')
+        fp = open(path, 'rb')
+        interpreter = PDFPageInterpreter(rsrcmgr, device)
+        maxpages = 0
+        caching = True
+        for page in PDFPage.get_pages(fp, pagenos, maxpages=maxpages, password=password,caching=caching, check_extractable=True):
+            interpreter.process_page(page)
+
+        text = retstr.getvalue().decode()
+        fp.close()
+        device.close()
+        retstr.close()
+        return text
+
     def write_to_file(self, path, mode, content):
         folder = path.parent
         if not folder.exists():
@@ -45,6 +70,19 @@ class ProportionParser:
                         excipients_set.add(excipient.strip())
         return excipients_set
 
+    def excipients_pages_dict(self, excipients):
+        summary_file = Path(__file__).parent / 'summary.json'
+        result = {}
+        with open(summary_file, 'r', encoding='utf-8') as f:
+            content = json.loads(f.read())
+        
+        for excipient in excipients:
+            try:
+                result[excipient] = content[excipient]
+            except:        
+                pass
+        return result
+
     def get_excipient_pages(self, excipients):
         summary_file = Path(__file__).parent / 'summary.json'
         pagenos = set()
@@ -58,38 +96,59 @@ class ProportionParser:
                 pass
         return pagenos
 
-    def parse(self):
+    ''' Encontra a frase atual, com base no indice referencia, encontrando o primeiro caracter  '''
+    #def get_phrase(self, index):
+
+    def clean_folder(self, path):
+        if path.exists():
+            files = path.glob('*')
+            for f in files:
+                if f.is_file():
+                    f.unlink()
+
+    def parse_text(self, output_folder):
         translations_folder = Path(__file__).parent / 'translated_content'
         handbook_file = Path(__file__).parent / 'Handbook-of-Pharmaceutical-Excipients_6t.pdf'
-        measures = ['%', 'mL']
         excipients_set = self.get_excipients_set(translations_folder)
+        excipients_pages_dict = self.excipients_pages_dict(excipients_set)
         pagenos = self.get_excipient_pages(excipients_set)
-        summary = self.convert_pdf_to_txt(handbook_file, pagenos)
         print(len(pagenos), 'excipientes identificados no sumario')
-        formulation_section = 'Applications in Pharmaceutical Formulation or Technology'
-        summary_garbage_end_index = summary.find(formulation_section)
-        summary = summary[(summary_garbage_end_index + len(formulation_section)):]
-        self.write_to_file(Path(__file__).parent / 'summary.txt', 'w', summary)
-        summary_dict = {}
-        real_page_offset = 29
-        txt_output = Path(__file__).parent / 'summary.txt'
-        with open(txt_output, encoding='utf-8') as f:
-            for line in f.readlines():
-                if not 'Appendix' in line and not 'Contents' in line:
-                    line = line.rstrip('\n').strip('\f')
-                    last_space_index = line.rfind(' ')
-                    excipient = line[:last_space_index]
-                    pageno = line[last_space_index+1:]
-                    if len(excipient) > 0 and len(pageno) > 0:
-                        try:
-                            summary_dict[excipient] = int(pageno) + real_page_offset
-                        except:
-                            summary_dict[excipient] = pageno
-        print('Apendices e cabecalhos removidos')
-        txt_output.unlink()
+        formulation_section_start_string = '7 Applications in Pharmaceutical Formulation or\nTechnology\n'
+        formulation_section_end_string = '8 Description'
+        self.clean_folder(output_folder)
+        for excipient, page in excipients_pages_dict.items():
+            print('Buscando por', excipient)
+            #buscamos tambem na pagina seguinte, pois pode ser que a secao de formulacao so termine na proxima
+            excipient_pages_content = self.convert_pdf_to_txt(handbook_file, [page, page+1])
+            formulation_section_start_index = excipient_pages_content.find(formulation_section_start_string)
+            if formulation_section_start_index > -1:
+                formulation_section_end_index = excipient_pages_content.find(formulation_section_end_string, formulation_section_start_index)
+                formulation_section = excipient_pages_content[(formulation_section_start_index + len(formulation_section_start_string)) : formulation_section_end_index]
+                if not Path.exists(output_folder):
+                    Path.mkdir(output_folder)
+                with open((output_folder / excipient).with_suffix('.txt'), 'w', encoding='utf-8') as f:
+                    f.write(formulation_section)
+            else:
+                print('Secao de formulacao nao encontrada para', excipient)
 
-        json_output = Path(__file__).parent / 'summary.json'
-        with open(json_output, 'w', encoding='utf-8') as f:
-            f.write(json.dumps(summary_dict, indent=4))
+    def parse(self):
+        output_folder = Path(__file__).parent / 'proportions'
+        self.parse_text(output_folder)
 
-        print('Fim da conversao do sumario. Resultado em', json_output)
+        measures = ['%', 'mL', 'mg', 'g']
+        result = set()
+        for file in output_folder.glob('*.txt'):
+            if file.is_file():
+                excipient = file.stem
+                with open(file, 'r', encoding='utf-8') as f:
+                    file_content = f.read()
+                    file_content = file_content.replace('\n', ' ')
+                    for symbol in measures:
+                        count = file_content.count(symbol)
+                        last_index = 0
+                        for i in range(count):
+                            text_index = file_content.find(symbol, last_index)
+
+                            last_index = text_index + 1
+
+        print('Fim da captura de proporcoes. Resultado em', output_folder)
