@@ -53,7 +53,10 @@ class SummaryParser:
                     excipient = line[:last_space_index]
                     pageno = line[last_space_index+1:]
                     if len(excipient) > 0 and len(pageno) > 0:
-                        summary_dict[excipient] = pageno
+                        try:
+                            summary_dict[excipient] = int(pageno) + real_page_offset
+                        except:
+                            summary_dict[excipient] = pageno
         print('Apendices e cabecalhos removidos')
 
         with open(Path(__file__).parent / 'summary.json', 'w', encoding='utf-8') as f:
