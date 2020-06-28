@@ -25,7 +25,7 @@ class AnvisaBularioSpider(scrapy.Spider):
                 for suggestion in suggestion_list:
                     first_page = 1
                     page_size = 10
-                    self.clean_folder_files_recursive(CURRENT_FOLDER / 'bula_download')
+                    self.clean_folder_recursive(CURRENT_FOLDER / 'bula_download')
                     yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
                         formdata={
                             'txtMedicamento': suggestion,
@@ -134,11 +134,11 @@ class AnvisaBularioSpider(scrapy.Spider):
         with open(file_path, 'wb') as f:
             f.write(response.body)
 
-    def clean_folder_files_recursive(self, path):
+    def clean_folder_recursive(self, path):
         if path.exists():
             for content in path.glob('**/*'):
                 if content.is_file():
                     content.unlink()
                 else:
-                    self.clean_folder_files_recursive(content)
+                    self.clean_folder_recursive(content)
                     content.rmdir()

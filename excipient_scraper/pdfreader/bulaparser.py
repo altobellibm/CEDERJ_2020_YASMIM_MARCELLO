@@ -202,19 +202,19 @@ class BulaParser:
 
         return []
 
-    def clean_folder_files_recursive(self, path):
+    def clean_folder_recursive(self, path):
         if path.exists():
             for content in path.glob('**/*'):
                 if content.is_file():
                     content.unlink()
                 else:
-                    self.clean_folder_files_recursive(content)
+                    self.clean_folder_recursive(content)
                     content.rmdir()
 
     def parse(self):
         input_files_dir = CURRENT_FILE_PATH.parent / "scrapy" / "bula_download"
         output_files_dir = CURRENT_FILE_PATH / 'bulas_content'
-        self.clean_folder_files_recursive(output_files_dir)
+        self.clean_folder_recursive(output_files_dir)
         composition = 'composição'
         composition_section_end_list = ['informações técnicas', 'informações ao profissional', 'indicações']
         for content in input_files_dir.glob('*'):

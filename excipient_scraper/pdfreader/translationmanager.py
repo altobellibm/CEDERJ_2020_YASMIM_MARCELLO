@@ -33,11 +33,12 @@ class TranslationManager:
 
     def clean_folder_recursive(self, path):
         if path.exists():
-            if path.is_dir():
-                files = path.glob('**/*')
-                for f in files:
-                    if f.is_file():
-                        f.unlink()
+            for content in path.glob('**/*'):
+                if content.is_file():
+                    content.unlink()
+                else:
+                    self.clean_folder_recursive(content)
+                    content.rmdir()
 
     def convert_pdf_to_txt(self, path):
         pdf_resource_manager = PDFResourceManager()
