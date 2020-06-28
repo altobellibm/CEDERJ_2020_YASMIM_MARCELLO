@@ -1,6 +1,7 @@
 .vscode/
-pdfreader/bulas/
-
+pdfreader/bulas_content/*.json
+pdfreader/proportions/*.json
+pdfreader/proportions/*.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
