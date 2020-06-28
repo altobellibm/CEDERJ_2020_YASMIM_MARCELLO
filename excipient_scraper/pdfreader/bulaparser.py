@@ -41,18 +41,38 @@ class BulaParser:
         with open(path, mode, encoding='utf-8') as f:
             f.write(content)
 
-    def get_formulation(self, text_section):
+    def get_formulation(self, text_section, start_index=0):
         section_start_string = 'cada '
         section_end_string_list = [' contém', ' contem']
+        text_section = text_section[start_index:]
         formulation_start = text_section.find(section_start_string)
         if formulation_start > -1:
-            formulation_end = text_section.find(section_end_string_list[0])
-            if not formulation_end > -1:
-                formulation_end = text_section.find(section_end_string_list[1])
+            for section_end in section_end_string_list:
+                formulation_end = text_section.find(section_end, formulation_start+1)
+                if formulation_end > -1:
+                    break
             if formulation_end > -1:
-                return text_section[(formulation_start + len(section_start_string)) : formulation_end]
+                start_index = (formulation_start + len(section_start_string))
+                return [formulation_end, text_section[start_index : formulation_end]]
 
-        return ''
+        return [-1, '']
+
+    def get_formulation_ocurrences(self, text_section, start_index=0):
+        section_start_string = 'cada '
+        section_end_string_list = [' contém', ' contem']
+        formulation_start_index = text_section.find(section_start_string)
+        count = 0
+        while formulation_start_index > -1:
+            for section_end in section_end_string_list:
+                formulation_end_index = text_section.find(section_end, formulation_start_index)
+                if formulation_end_index > -1:
+                    formulation_start_index = text_section.find(section_start_string, formulation_end_index+1)
+                    count += 1
+                    break
+            if not formulation_end_index > -1:
+                break
+
+        return count
 
     def clean_folder(self, path):
         if path.exists():
@@ -77,7 +97,8 @@ class BulaParser:
         excipient_list = [self.clean_string(x) for x in excipient_as_text.split(separator)]
         return excipient_list
 
-    def get_excipient(self, text_section):
+    def get_excipient(self, text_section, start_index=0):
+        text_section = text_section[start_index:]
         ## CASO 1 [Excipientes:, .]
         text_section = text_section.lower()
         search_string = 'excipientes:'
@@ -181,39 +202,56 @@ class BulaParser:
 
         return []
 
+    def clean_folder_files_recursive(self, path):
+        if path.exists():
+            for content in path.glob('**/*'):
+                if content.is_file():
+                    content.unlink()
+                else:
+                    self.clean_folder_files_recursive(content)
+                    content.rmdir()
+
     def parse(self):
         input_files_dir = CURRENT_FILE_PATH.parent / "scrapy" / "bula_download"
         output_files_dir = CURRENT_FILE_PATH / 'bulas_content'
-        self.clean_folder(output_files_dir)
+        self.clean_folder_files_recursive(output_files_dir)
         composition = 'composição'
         composition_section_end_list = ['informações técnicas', 'informações ao profissional', 'indicações']
-        for file in input_files_dir.glob('*'):
-            if file.is_file():
-                filename_wo_extension = file.stem
-                output_file_path = (output_files_dir / filename_wo_extension).with_suffix('.json')
-                print('Lendo arquivo ' + str(file.name))
-                self.clean_file(output_file_path)
-                pdf_text_content = self.convert_pdf_to_txt(file).lower()
-                composition_occurrences_amount = pdf_text_content.count(composition)
-                for section_end in composition_section_end_list:
-                    technical_info_occurrences_amount = pdf_text_content.count(section_end)
-                    if technical_info_occurrences_amount > 0:
-                        technical_info = section_end
-                        break
-                composition_start_index = 0
-                composition_end_index = 0
-                for i in range(min(composition_occurrences_amount, technical_info_occurrences_amount)):
-                    composition_start_index = pdf_text_content.find(composition, composition_start_index + 1)
-                    composition_end_index = pdf_text_content.find(technical_info, composition_start_index + 1)
-                    if composition_end_index > composition_start_index:
-                        #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
-                        composition_section = pdf_text_content[composition_start_index : composition_end_index]
-                        formulation = self.get_formulation(composition_section)
-                        excipients = str(self.get_excipient(composition_section))
-                        output = {
-                            "formulacao": formulation,
-                            "excipientes": excipients
-                        }
-                        print('Formulacao: ' + formulation)
-                        print('Excipientes: ' + excipients)
-                        self.write_to_file(output_file_path, 'a', json.dumps(output, indent=4))
+        for content in input_files_dir.glob('*'):
+            if content.is_dir():
+                for file in content.glob('*'):
+                    if file.is_file():
+                        filename_wo_extension = file.stem
+                        output_file_path = (output_files_dir / content.stem / filename_wo_extension).with_suffix('.json')
+                        print('Lendo arquivo ' + str(file.parent.name + '/' + file.name))
+                        if output_file_path.exists():
+                            output_file_path.unlink()
+                        pdf_text_content = self.convert_pdf_to_txt(file).lower()
+                        composition_occurrences_amount = pdf_text_content.count(composition)
+                        for section_end in composition_section_end_list:
+                            technical_info_occurrences_amount = pdf_text_content.count(section_end)
+                            if technical_info_occurrences_amount > 0:
+                                technical_info = section_end
+                                break
+                        composition_start_index = 0
+                        composition_end_index = 0
+                        for i in range(min(composition_occurrences_amount, technical_info_occurrences_amount)):
+                            composition_start_index = pdf_text_content.find(composition, composition_start_index + 1)
+                            composition_end_index = pdf_text_content.find(technical_info, composition_start_index + 1)
+                            if composition_end_index > composition_start_index:
+                                #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
+                                composition_section = pdf_text_content[composition_start_index : composition_end_index]
+                                formulation_ocurrences = self.get_formulation_ocurrences(composition_section)
+                                output = []
+                                formulation_index = 0
+                                for i in range(formulation_ocurrences):
+                                    formulation_list = self.get_formulation(composition_section, formulation_index+1)
+                                    excipients = str(self.get_excipient(composition_section, formulation_index+1))
+                                    output.append({
+                                        "formulacao": formulation_list[1],
+                                        "excipientes": excipients
+                                    })
+                                    print('Formulacao: ' + formulation_list[1])
+                                    print('Excipientes: ' + excipients)
+                                    formulation_index = formulation_list[0]
+                                self.write_to_file(output_file_path, 'a', json.dumps(output, indent=4))
