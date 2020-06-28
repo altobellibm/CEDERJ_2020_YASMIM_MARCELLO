@@ -25,7 +25,7 @@ class AnvisaBularioSpider(scrapy.Spider):
                 for suggestion in suggestion_list:
                     first_page = 1
                     page_size = 10
-                    self.clean_folder()
+                    self.clean_folder_files_recursive()
                     yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
                         formdata={
                             'txtMedicamento': suggestion,
@@ -72,7 +72,10 @@ class AnvisaBularioSpider(scrapy.Spider):
                         'pNuTransacao': transaction_number,
                         'pIdAnexo': attachment_number
                     },
-                    headers={'X-Attachment-Number': attachment_number},
+                    headers={
+                        'X-Med-Search': search,
+                        'X-Attachment-Number': attachment_number
+                    },
                     encoding=self.request_encoding,
                     callback=self.save_pdf
                 )
@@ -120,18 +123,18 @@ class AnvisaBularioSpider(scrapy.Spider):
 
     def save_pdf(self, response):
         folder_path = CURRENT_FOLDER / 'bula_download'
-        filename = response.request.headers['X-Attachment-Number']
-        file_path = folder_path / (filename.decode("utf-8") + '.pdf')
+        filename = response.request.headers['X-Med-Search'].decode(self.request_encoding)
+        file_path = (folder_path / filename).with_suffix('.pdf')
         if not folder_path.exists():
             Path.mkdir(folder_path)
         self.logger.info('Salvando PDF %s', file_path)
         with open(file_path, 'wb') as f:
             f.write(response.body)
 
-    def clean_folder(self):
-        folder_path = CURRENT_FOLDER / 'bula_download'
-        if folder_path.exists():
-            files = folder_path.glob('**/*')
-            for f in files:
+    def clean_folder_files_recursive(self):
+        folder = CURRENT_FOLDER / 'bula_download'
+        if folder.exists():
+            folder = folder.glob('**/*')
+            for f in folder:
                 if f.is_file():
                     f.unlink()
