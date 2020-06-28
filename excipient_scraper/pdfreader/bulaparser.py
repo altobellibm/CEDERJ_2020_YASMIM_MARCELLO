@@ -192,10 +192,9 @@ class BulaParser:
             if file.is_file():
                 filename_wo_extension = file.stem
                 output_file_path = (output_files_dir / filename_wo_extension).with_suffix('.json')
-                print('**** Arquivo ' + str(file) + ' ****')
+                print('Lendo arquivo ' + str(file.name))
                 self.clean_file(output_file_path)
                 pdf_text_content = self.convert_pdf_to_txt(file).lower()
-                print('PDF lido')
                 composition_occurrences_amount = pdf_text_content.count(composition)
                 technical_info_occurrences_amount = pdf_text_content.count(technical_info_list[0])
                 if technical_info_occurrences_amount > 0:
@@ -207,19 +206,20 @@ class BulaParser:
                 composition_end_index = 0
                 for i in range(min(composition_occurrences_amount, technical_info_occurrences_amount)):
                     composition_start_index = pdf_text_content.find(composition, composition_start_index + 1)
-                    print('Range start: ' + str(composition_start_index))
                     composition_end_index = pdf_text_content.find(technical_info, composition_start_index + 1)
-                    print('Range end: ' + str(composition_end_index))
                     if composition_end_index < composition_start_index:
                         #se cairmos aqui eh devido ao 'informacoes tecnicas' vir antes da 'composicao'
                         #neste caso, devemos procurar por 'indicacoes' para delimitar o fim da secao desejada
                         composition_end_index = pdf_text_content.find(indications)
-                        print('Range end ajustado: ' + str(composition_end_index))
                     if composition_end_index > composition_start_index:
                         #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
                         composition_section = pdf_text_content[composition_start_index : composition_end_index]
+                        formulation = self.get_formulation(composition_section)
+                        excipients = str(self.get_excipient(composition_section))
                         output = {
-                            "formulacao": self.get_formulation(composition_section),
-                            "excipientes": str(self.get_excipient(composition_section))
+                            "formulacao": formulation,
+                            "excipientes": excipients
                         }
+                        print('Formulacao: ' + formulation)
+                        print('Excipientes: ' + excipients)
                         self.write_to_file(output_file_path, 'a', json.dumps(output, indent=4))
