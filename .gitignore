@@ -1,8 +1,7 @@
 .vscode/
-excipient_scraper/pdfreader/bulas_content/*.json
-excipient_scraper/pdfreader/proportions/*.json
-excipient_scraper/pdfreader/proportions/*.txt
-excipient_scraper/pdfreader/translated_content/*.json
+excipient_scraper/pdfreader/bulas_content/
+excipient_scraper/pdfreader/proportions/
+excipient_scraper/pdfreader/translated_content/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
