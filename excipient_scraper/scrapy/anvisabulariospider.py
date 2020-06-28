@@ -25,7 +25,7 @@ class AnvisaBularioSpider(scrapy.Spider):
                 for suggestion in suggestion_list:
                     first_page = 1
                     page_size = 10
-                    self.clean_folder_files_recursive()
+                    self.clean_folder_files_recursive(CURRENT_FOLDER / 'bula_download')
                     yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
                         formdata={
                             'txtMedicamento': suggestion,
@@ -122,19 +122,23 @@ class AnvisaBularioSpider(scrapy.Spider):
         return file_arguments_list[1]
 
     def save_pdf(self, response):
-        folder_path = CURRENT_FOLDER / 'bula_download'
-        filename = response.request.headers['X-Med-Search'].decode(self.request_encoding)
-        file_path = (folder_path / filename).with_suffix('.pdf')
-        if not folder_path.exists():
-            Path.mkdir(folder_path)
-        self.logger.info('Salvando PDF %s', file_path)
+        folder = response.request.headers['X-Med-Search'].decode(self.request_encoding)
+        output_path = CURRENT_FOLDER / 'bula_download' / folder
+        filename = response.request.headers['X-Attachment-Number'].decode(self.request_encoding)
+        file_path = (output_path / filename).with_suffix('.pdf')
+        if not output_path.parent.exists():
+            Path.mkdir(output_path.parent)
+        if not output_path.exists():
+            Path.mkdir(output_path)
+        self.logger.debug('Salvando PDF %s', file_path)
         with open(file_path, 'wb') as f:
             f.write(response.body)
 
-    def clean_folder_files_recursive(self):
-        folder = CURRENT_FOLDER / 'bula_download'
-        if folder.exists():
-            folder = folder.glob('**/*')
-            for f in folder:
-                if f.is_file():
-                    f.unlink()
+    def clean_folder_files_recursive(self, path):
+        if path.exists():
+            for content in path.glob('**/*'):
+                if content.is_file():
+                    content.unlink()
+                else:
+                    self.clean_folder_files_recursive(content)
+                    content.rmdir()
