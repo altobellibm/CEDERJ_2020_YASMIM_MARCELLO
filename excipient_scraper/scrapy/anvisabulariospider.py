@@ -9,17 +9,19 @@ CURRENT_FOLDER = Path(__file__).parent
 class AnvisaBularioSpider(scrapy.Spider):
     name = 'anvisa_bulario'
     request_encoding = 'cp1252'
+    custom_settings = {
+        'LOG_LEVEL': 'INFO',
+    }
 
     def start_requests(self):
         if not hasattr(self, "search"):
             raise Exception('Especifique o parametro com o principio ativo desejado')
-            ##TODO: se possivel, vamos especificar essa excecao
         else:
             autocomplete_file_path = CURRENT_FOLDER / 'autocomplete' / 'medicamentos.txt'
             if autocomplete_file_path.is_file():
                 suggestion_list = self.get_search_suggestions(autocomplete_file_path, self.search)
                 if not suggestion_list:
-                    raise Exception('Nenhum resultado disponivel para a busca')
+                    raise Exception('Nenhum sugestao foi encontrada para o parametro de busca fornecido')
                 for suggestion in suggestion_list:
                     first_page = 1
                     page_size = 10
@@ -58,12 +60,13 @@ class AnvisaBularioSpider(scrapy.Spider):
         table_cells_css_path = '#'+table_element_id+' tbody tr td:nth-child('+str(column_index)+')'
         result_cells = response.css(table_cells_css_path)
         if result_cells:
+            search = response.request.headers['X-Med-Search'].decode(self.request_encoding)
+            self.logger.info('Baixando PDFs da pagina %d do medicamento "%s"', current_page, search)
             for table_cells_selector in result_cells:
                 file_link = table_cells_selector.css('a::attr(onclick)').get()
                 file_arguments_list = self.get_file_arguments_list(file_link)
                 transaction_number = self.get_transaction_number(file_arguments_list)
                 attachment_number = self.get_attachment_number(file_arguments_list)
-                self.logger.info('Requisitando PDF ID %s', attachment_number)
                 yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmVisualizarBula.asp',
                     formdata={
                         'pNuTransacao': transaction_number,
@@ -74,7 +77,6 @@ class AnvisaBularioSpider(scrapy.Spider):
                     callback=self.save_pdf
                 )
             #proxima pagina
-            search = response.request.headers['X-Med-Search'].decode(self.request_encoding)
             page_size = response.request.headers['X-Page-Size'].decode(self.request_encoding)
             next_page_as_str = str(current_page+1)
             yield scrapy.FormRequest('http://www.anvisa.gov.br/datavisa/fila_bula/frmResultado.asp',
@@ -93,7 +95,6 @@ class AnvisaBularioSpider(scrapy.Spider):
             )
 
     def get_column_index(self, response, table_element_id, target_column_text):
-        self.logger.info('Procurando pelo titulo de coluna "%s"', target_column_text)
         column_index = 1
         column_found = False
         for table_headers_selector in response.css('#'+table_element_id+' thead tr th'): #tabela de resultado possui a ID tblResultado
@@ -104,13 +105,12 @@ class AnvisaBularioSpider(scrapy.Spider):
             else:
                 column_index += 1
         if column_found:
-            self.logger.info('Coluna encontrada no indice %d', column_index)
             return column_index
         else:
             raise Exception('Nao foi possivel encontrar a coluna "%s"', target_column_text)
 
     def get_file_arguments_list(self, onclick_function):
-        return re.findall('\d+', onclick_function)
+        return re.findall(r'\d+', onclick_function)
 
     def get_transaction_number(self, file_arguments_list):
         return file_arguments_list[0]
