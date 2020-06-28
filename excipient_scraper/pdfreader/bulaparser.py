@@ -186,8 +186,7 @@ class BulaParser:
         output_files_dir = CURRENT_FILE_PATH / 'bulas_content'
         self.clean_folder(output_files_dir)
         composition = 'composição'
-        technical_info_list = ['informações técnicas', 'informações ao profissional']
-        indications = 'indicações'
+        composition_section_end_list = ['informações técnicas', 'informações ao profissional', 'indicações']
         for file in input_files_dir.glob('*'):
             if file.is_file():
                 filename_wo_extension = file.stem
@@ -196,21 +195,16 @@ class BulaParser:
                 self.clean_file(output_file_path)
                 pdf_text_content = self.convert_pdf_to_txt(file).lower()
                 composition_occurrences_amount = pdf_text_content.count(composition)
-                technical_info_occurrences_amount = pdf_text_content.count(technical_info_list[0])
-                if technical_info_occurrences_amount > 0:
-                    technical_info = technical_info_list[0]
-                else:
-                    technical_info_occurrences_amount = pdf_text_content.count(technical_info_list[1])
-                    technical_info = technical_info_list[1]
+                for section_end in composition_section_end_list:
+                    technical_info_occurrences_amount = pdf_text_content.count(section_end)
+                    if technical_info_occurrences_amount > 0:
+                        technical_info = section_end
+                        break
                 composition_start_index = 0
                 composition_end_index = 0
                 for i in range(min(composition_occurrences_amount, technical_info_occurrences_amount)):
                     composition_start_index = pdf_text_content.find(composition, composition_start_index + 1)
                     composition_end_index = pdf_text_content.find(technical_info, composition_start_index + 1)
-                    if composition_end_index < composition_start_index:
-                        #se cairmos aqui eh devido ao 'informacoes tecnicas' vir antes da 'composicao'
-                        #neste caso, devemos procurar por 'indicacoes' para delimitar o fim da secao desejada
-                        composition_end_index = pdf_text_content.find(indications)
                     if composition_end_index > composition_start_index:
                         #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
                         composition_section = pdf_text_content[composition_start_index : composition_end_index]
