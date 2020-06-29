@@ -32,9 +32,12 @@ class TranslationManager:
                             translated_json_list = []
                             for obj in json_list:
                                 translated_obj = obj
-                                translated_excipientes = translator.translate(obj['excipientes'], src='pt', dest='en')
-                                translated_obj['excipientes_ingles'] = translated_excipientes.text
-                                translated_json_list.append(translated_obj)
+                                try:
+                                    translated_excipientes = translator.translate(obj['excipientes'], src='pt', dest='en')
+                                    translated_obj['excipientes_ingles'] = translated_excipientes.text
+                                    translated_json_list.append(translated_obj)
+                                except:
+                                    pass
                             if not output_file.parent.exists():
                                 Path.mkdir(output_file.parent)
                             with open(output_file, 'w') as output:
