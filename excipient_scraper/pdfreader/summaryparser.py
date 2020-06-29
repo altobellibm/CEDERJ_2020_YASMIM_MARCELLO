@@ -4,12 +4,13 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from io import StringIO
 from pathlib import Path
-import os
-import pdb
 import json
 import re
 
 class SummaryParser:
+    summary_pages = [5, 6, 7, 8, 9]
+    real_page_offset = 28
+
     def convert_pdf_to_txt(self, path, pagenos=[]):
         pdf_resource_manager = PDFResourceManager()
         retstr = StringIO()
@@ -27,24 +28,22 @@ class SummaryParser:
         retstr.close()
         return text
 
-    def write_to_file(self, path, mode, content):
+    def write_to_file(self, path, content):
         folder = path.parent
         if not folder.exists():
             Path.mkdir(folder)
-        with open(path, mode, encoding='utf-8') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             f.write(content)
 
     def parse(self):
         #pagina real = pagina do sumario + 29
-        summary_pages = [5, 6, 7, 8, 9]
-        summary = self.convert_pdf_to_txt(Path(__file__).parent / 'Handbook-of-Pharmaceutical-Excipients_6t.pdf', summary_pages)
+        summary = self.convert_pdf_to_txt(Path(__file__).parent / 'Handbook-of-Pharmaceutical-Excipients_6t.pdf', self.summary_pages)
         print(len(summary), 'caracteres lidos do sumario')
         summary_garbage_end_string = 'Monographs\n'
         summary_garbage_end_index = summary.find(summary_garbage_end_string)
         summary = summary[(summary_garbage_end_index + len(summary_garbage_end_string)):]
-        self.write_to_file(Path(__file__).parent / 'summary.txt', 'w', summary)
+        self.write_to_file(Path(__file__).parent / 'summary.txt', summary)
         summary_dict = {}
-        real_page_offset = 28
         txt_output = Path(__file__).parent / 'summary.txt'
         with open(txt_output, encoding='utf-8') as f:
             for line in f.readlines():
@@ -55,7 +54,7 @@ class SummaryParser:
                     pageno = line[last_space_index+1:]
                     if len(excipient) > 0 and len(pageno) > 0:
                         try:
-                            summary_dict[excipient.lower()] = int(pageno) + real_page_offset
+                            summary_dict[excipient.lower()] = int(pageno) + self.real_page_offset
                         except:
                             summary_dict[excipient.lower()] = pageno
         print('Apendices e cabecalhos removidos')
