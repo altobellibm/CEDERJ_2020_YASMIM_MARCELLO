@@ -144,7 +144,7 @@ class ProportionParser:
         output_folder = Path(__file__).parent / 'proportions'
         self.parse_text(output_folder)
 
-        measures = ['%', 'w/w', 'w/v']
+        measures = ['%', 'w/w', 'w/v', 'mL']
         for file in output_folder.glob('*.txt'):
             if file.is_file():
                 result = set()
