@@ -67,10 +67,12 @@ class ProportionParser:
                     with open(file, 'r', encoding='utf-8') as f:
                         json_object_list = json.loads(f.read())
                         for json_object in json_object_list:
-                            excipients_list = json_object['excipientes_ingles'].lstrip("['").rstrip("']").split("', '")
+                            excipients = json_object['excipientes_ingles'].lstrip("['").rstrip("']").replace("', '", "','")
+                            excipients_list = excipients.split("','")
                             for excipient in excipients_list:
                                 excipients_set.add(excipient.strip())
         return excipients_set
+
 
     def excipients_pages_dict(self, excipients):
         summary_file = Path(__file__).parent / 'summary.json'
@@ -116,9 +118,9 @@ class ProportionParser:
     def parse_text(self, output_folder):
         translations_folder = Path(__file__).parent / 'translated_content'
         handbook_file = Path(__file__).parent / 'Handbook-of-Pharmaceutical-Excipients_6t.pdf'
-        excipients_set = self.get_excipients_set(translations_folder)
-        excipients_pages_dict = self.excipients_pages_dict(excipients_set)
-        pagenos = self.get_excipient_pages(excipients_set)
+        translated_excipients_set = self.get_excipients_set(translations_folder)
+        excipients_pages_dict = self.excipients_pages_dict(translated_excipients_set)
+        pagenos = self.get_excipient_pages(translated_excipients_set)
         print(len(pagenos), 'excipientes identificados no sumario')
         formulation_section_start_string = '7 Applications in Pharmaceutical Formulation or\nTechnology\n'
         formulation_section_end_string = '8 Description'
