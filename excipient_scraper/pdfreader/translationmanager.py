@@ -5,14 +5,15 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from io import StringIO
 from pathlib import Path
-import os
-import pdb
 import json
 import re
 
 CURRENT_FILE_PATH = Path(__file__).parent
 
 class TranslationManager:
+    input_files_dir = CURRENT_FILE_PATH / "bulas_content"
+    output_files_dir = CURRENT_FILE_PATH / "translated_content"
+
     def translate_excipients(self, input_files_dir, output_files_dir):
         translator = Translator()
         for content in input_files_dir.glob('*'):
@@ -56,7 +57,5 @@ class TranslationManager:
                     content.rmdir()
 
     def translate(self):
-        input_files_dir = CURRENT_FILE_PATH / "bulas_content"
-        output_files_dir = CURRENT_FILE_PATH / "translated_content"
-        self.clean_folder_recursive(output_files_dir)
-        self.translate_excipients(input_files_dir, output_files_dir)
+        self.clean_folder_recursive(self.output_files_dir)
+        self.translate_excipients(self.input_files_dir, self.output_files_dir)
