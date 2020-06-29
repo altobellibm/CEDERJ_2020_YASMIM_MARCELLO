@@ -1,7 +1,6 @@
-import pdb
 import sys
 from pathlib import Path
-from scrapy.crawler import CrawlerProcess, CrawlerRunner
+from scrapy.crawler import CrawlerRunner
 from scrapy.utils.log import configure_logging
 from twisted.internet import reactor, defer
 from anvisautocompletespider import AnvisaAutocompleteSpider

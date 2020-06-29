@@ -4,8 +4,6 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from io import StringIO
 from pathlib import Path
-import os
-import pdb
 import json
 import re
 
@@ -29,10 +27,6 @@ class BulaParser:
         device.close()
         retstr.close()
         return text
-
-    def clean_file(self, path):
-        if path.is_file():
-            open(path, 'w').close()
 
     def write_to_file(self, path, mode, content):
         folder = path.parent
@@ -73,13 +67,6 @@ class BulaParser:
                 break
 
         return count
-
-    def clean_folder(self, path):
-        if path.exists():
-            files = path.glob('**/*')
-            for f in files:
-                if f.is_file():
-                    f.unlink()
 
     def clean_string(self, text):
         return re.sub('[\n.()]', '', text).strip()
