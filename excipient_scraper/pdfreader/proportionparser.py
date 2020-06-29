@@ -4,12 +4,15 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from io import StringIO, BytesIO
 from pathlib import Path
-import os
-import pdb
 import json
 import re
 
 class ProportionParser:
+    output_folder = Path(__file__).parent / 'proportions'
+    measures = ['%', 'w/w', 'w/v', 'mL']
+    formulation_section_start_string = '7 Applications in Pharmaceutical Formulation or\nTechnology\n'
+    formulation_section_end_string = '8 Description'
+
     def convert_pdf_to_txt(self, path, pagenos=[]):
         pdf_resource_manager = PDFResourceManager()
         retstr = StringIO()
@@ -27,38 +30,6 @@ class ProportionParser:
         retstr.close()
         return text
 
-    def convert_pdf(self, path, format='text', codec='utf-8', password='', pagenos=set()):
-        rsrcmgr = PDFResourceManager()
-        retstr = BytesIO()
-        laparams = LAParams()
-        if format == 'text':
-            device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
-        elif format == 'html':
-            device = HTMLConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
-        elif format == 'xml':
-            device = XMLConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
-        else:
-            raise ValueError('provide format, either text, html or xml!')
-        fp = open(path, 'rb')
-        interpreter = PDFPageInterpreter(rsrcmgr, device)
-        maxpages = 0
-        caching = True
-        for page in PDFPage.get_pages(fp, pagenos, maxpages=maxpages, password=password,caching=caching, check_extractable=True):
-            interpreter.process_page(page)
-
-        text = retstr.getvalue().decode()
-        fp.close()
-        device.close()
-        retstr.close()
-        return text
-
-    def write_to_file(self, path, mode, content):
-        folder = path.parent
-        if not folder.exists():
-            Path.mkdir(folder)
-        with open(path, mode, encoding='utf-8') as f:
-            f.write(content)
-
     def get_excipients_set(self, path):
         excipients_set = set()
         for folder in path.glob('*'):
@@ -73,8 +44,7 @@ class ProportionParser:
                                 excipients_set.add(excipient.strip())
         return excipients_set
 
-
-    def excipients_pages_dict(self, excipients):
+    def get_excipients_pages_dict(self, excipients):
         summary_file = Path(__file__).parent / 'summary.json'
         result = {}
         with open(summary_file, 'r', encoding='utf-8') as f:
@@ -119,20 +89,18 @@ class ProportionParser:
         translations_folder = Path(__file__).parent / 'translated_content'
         handbook_file = Path(__file__).parent / 'Handbook-of-Pharmaceutical-Excipients_6t.pdf'
         translated_excipients_set = self.get_excipients_set(translations_folder)
-        excipients_pages_dict = self.excipients_pages_dict(translated_excipients_set)
+        excipients_pages_dict = self.get_excipients_pages_dict(translated_excipients_set)
         pagenos = self.get_excipient_pages(translated_excipients_set)
         print(len(pagenos), 'excipientes identificados no sumario')
-        formulation_section_start_string = '7 Applications in Pharmaceutical Formulation or\nTechnology\n'
-        formulation_section_end_string = '8 Description'
         self.clean_folder(output_folder)
         for excipient, page in excipients_pages_dict.items():
             print('Buscando por', excipient)
             #buscamos tambem na pagina seguinte, pois pode ser que a secao de formulacao so termine na proxima
             excipient_pages_content = self.convert_pdf_to_txt(handbook_file, [page, page+1])
-            formulation_section_start_index = excipient_pages_content.find(formulation_section_start_string)
+            formulation_section_start_index = excipient_pages_content.find(self.formulation_section_start_string)
             if formulation_section_start_index > -1:
-                formulation_section_end_index = excipient_pages_content.find(formulation_section_end_string, formulation_section_start_index)
-                formulation_section = excipient_pages_content[(formulation_section_start_index + len(formulation_section_start_string)) : formulation_section_end_index]
+                formulation_section_end_index = excipient_pages_content.find(self.formulation_section_end_string, formulation_section_start_index)
+                formulation_section = excipient_pages_content[(formulation_section_start_index + len(self.formulation_section_start_string)) : formulation_section_end_index]
                 if not Path.exists(output_folder):
                     Path.mkdir(output_folder)
                 with open((output_folder / excipient).with_suffix('.txt'), 'w', encoding='utf-8') as f:
@@ -141,11 +109,8 @@ class ProportionParser:
                 print('Secao de formulacao nao encontrada para', excipient)
 
     def parse(self):
-        output_folder = Path(__file__).parent / 'proportions'
-        self.parse_text(output_folder)
-
-        measures = ['%', 'w/w', 'w/v', 'mL']
-        for file in output_folder.glob('*.txt'):
+        self.parse_text(self.output_folder)
+        for file in self.output_folder.glob('*.txt'):
             if file.is_file():
                 result = set()
                 excipient = file.stem
@@ -154,7 +119,7 @@ class ProportionParser:
                     file_content = file_content.replace('\n', ' ')
                     file_content = re.sub(r'[(]\d+[^A-Za-z0-9]\d+[)]', '', file_content)
                     file_content = re.sub(r'[(]\d+[)]', '', file_content)
-                    for symbol in measures:
+                    for symbol in self.measures:
                         count = file_content.count(symbol)
                         last_index = 0
                         for i in range(count):
@@ -163,8 +128,8 @@ class ProportionParser:
                             result.add(phrase)
                             last_index = text_index + 1
                 
-                with open((output_folder / excipient).with_suffix('.json'), 'w', encoding='utf-8') as f:
+                with open((self.output_folder / excipient).with_suffix('.json'), 'w', encoding='utf-8') as f:
                     json_content = {excipient: list(result)}
                     f.write(json.dumps(json_content, indent=4))
 
-        print('Fim da captura de proporcoes. Resultado em', output_folder)
+        print('Fim da captura de proporcoes. Resultado em', self.output_folder)
