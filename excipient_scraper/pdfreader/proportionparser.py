@@ -59,15 +59,17 @@ class ProportionParser:
         with open(path, mode, encoding='utf-8') as f:
             f.write(content)
 
-    def get_excipients_set(self, folder):
+    def get_excipients_set(self, path):
         excipients_set = set()
-        for file in folder.glob('*'):
-            if file.is_file():
-                with open(file, encoding='utf-8') as f:
-                    json_content = json.loads(f.read())
-                    excipients_list = json_content['excipientes_ingles'].lstrip("['").rstrip("']").split("', '")
-                    for excipient in excipients_list:
-                        excipients_set.add(excipient.strip())
+        for folder in path.glob('*'):
+            if folder.is_dir():
+                for file in folder.glob('*'):
+                    with open(file, 'r', encoding='utf-8') as f:
+                        json_object_list = json.loads(f.read())
+                        for json_object in json_object_list:
+                            excipients_list = json_object['excipientes_ingles'].lstrip("['").rstrip("']").split("', '")
+                            for excipient in excipients_list:
+                                excipients_set.add(excipient.strip())
         return excipients_set
 
     def excipients_pages_dict(self, excipients):
