@@ -235,6 +235,7 @@ class BulaParser:
                                 break
                         composition_start_index = 0
                         composition_end_index = 0
+                        output = []
                         for i in range(min(composition_occurrences_amount, technical_info_occurrences_amount)):
                             composition_start_index = pdf_text_content.find(composition, composition_start_index + 1)
                             composition_end_index = pdf_text_content.find(technical_info, composition_start_index + 1)
@@ -242,7 +243,6 @@ class BulaParser:
                                 #se apos a verificacao pelos fins de secao alguma for bem sucedida, o trecho eh valido
                                 composition_section = pdf_text_content[composition_start_index : composition_end_index]
                                 formulation_ocurrences = self.get_formulation_ocurrences(composition_section)
-                                output = []
                                 formulation_index = 0
                                 for i in range(formulation_ocurrences):
                                     formulation_list = self.get_formulation(composition_section, formulation_index+1)
@@ -254,4 +254,4 @@ class BulaParser:
                                     print('Formulacao: ' + formulation_list[1])
                                     print('Excipientes: ' + excipients)
                                     formulation_index = formulation_list[0]
-                                self.write_to_file(output_file_path, 'a', json.dumps(output, indent=4))
+                                self.write_to_file(output_file_path, 'w', json.dumps(output, indent=4))
