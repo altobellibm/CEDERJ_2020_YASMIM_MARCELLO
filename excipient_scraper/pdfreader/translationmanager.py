@@ -5,7 +5,6 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from io import StringIO
 from pathlib import Path
-#from excipient_scraper.filemanager import FileManager
 import os
 import pdb
 import json
@@ -16,20 +15,33 @@ CURRENT_FILE_PATH = Path(__file__).parent
 class TranslationManager:
     def translate_excipients(self, input_files_dir, output_files_dir):
         translator = Translator()
-        for file in input_files_dir.glob('*'):
-            if file.is_file():
-                with open(file, 'r') as input_file:
-                    try:
-                        original_json = json.loads(input_file.read())
-                    except:
-                        pass
-                translated_excipientes = translator.translate(original_json['excipientes'], src='pt', dest='en')
-                original_json['excipientes_ingles'] = translated_excipientes.text
-                if not output_files_dir.exists():
-                    Path.mkdir(output_files_dir)
-                with open(output_files_dir / file.name, 'w') as output_file:
-                    output_file.write(json.dumps(original_json, indent=4))
-                print('Excipientes do arquivo ', file.name, ' traduzidos')
+        for content in input_files_dir.glob('*'):
+            if content.is_dir():
+                for file in content.glob('*'):
+                    if file.is_file():
+                        file_with_folder = str(file.parent.name) + '/' + file.name
+                        output_file = output_files_dir / file_with_folder
+                        if not output_files_dir.exists():
+                                Path.mkdir(output_files_dir.parent)
+                        with open(file, 'r') as input_file:
+                            try:
+                                json_list = json.loads(input_file.read())
+                            except:
+                                json_list = ''
+                        if json_list:
+                            translated_json_list = []
+                            for obj in json_list:
+                                translated_obj = obj
+                                translated_excipientes = translator.translate(obj['excipientes'], src='pt', dest='en')
+                                translated_obj['excipientes_ingles'] = translated_excipientes.text
+                                translated_json_list.append(translated_obj)
+                            if not output_file.parent.exists():
+                                Path.mkdir(output_file.parent)
+                            with open(output_file, 'w') as output:
+                                output.write(json.dumps(translated_json_list, indent=4))
+                            print('Excipientes do arquivo ', file_with_folder, ' traduzidos')
+                        else:
+                            print('Erro na traducao do arquivo ', file_with_folder)
 
     def clean_folder_recursive(self, path):
         if path.exists():
@@ -40,25 +52,8 @@ class TranslationManager:
                     self.clean_folder_recursive(content)
                     content.rmdir()
 
-    def convert_pdf_to_txt(self, path):
-        pdf_resource_manager = PDFResourceManager()
-        retstr = StringIO()
-        laparams = LAParams(
-            line_margin=4, #default 0.3
-            char_margin=6 #default 2.0
-        )
-        device = TextConverter(pdf_resource_manager, retstr, codec='utf-8', laparams=laparams) #especificando o parametro line_margin para garantir a ordem correta de interpretacao do PDF
-        with open(path, 'rb') as fp:
-            pdf_page_interpreter = PDFPageInterpreter(pdf_resource_manager, device)
-            pagenos = []
-            for page in PDFPage.get_pages(fp, pagenos, maxpages=0, password="", caching=True, check_extractable=True):
-                pdf_page_interpreter.process_page(page)
-            text = retstr.getvalue()
-        device.close()
-        retstr.close()
-        return text
-
     def translate(self):
+        input_files_dir = CURRENT_FILE_PATH / "bulas_content"
         output_files_dir = CURRENT_FILE_PATH / "translated_content"
         self.clean_folder_recursive(output_files_dir)
-        self.translate_excipients(CURRENT_FILE_PATH / "bulas_content", CURRENT_FILE_PATH / "translated_content")
+        self.translate_excipients(input_files_dir, output_files_dir)
