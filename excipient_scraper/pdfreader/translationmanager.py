@@ -23,7 +23,7 @@ class TranslationManager:
                         file_with_folder = str(file.parent.name) + '/' + file.name
                         output_file = output_files_dir / file_with_folder
                         if not output_files_dir.exists():
-                                Path.mkdir(output_files_dir.parent)
+                            Path.mkdir(output_files_dir)
                         with open(file, 'r') as input_file:
                             try:
                                 json_list = json.loads(input_file.read())
