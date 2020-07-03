@@ -201,6 +201,8 @@ class BulaParser:
     def parse(self):
         input_files_dir = CURRENT_FILE_PATH.parent / "scrapy" / "bula_download"
         output_files_dir = CURRENT_FILE_PATH / 'bulas_content'
+        if not output_files_dir.exists():
+            Path.mkdir(output_files_dir)
         self.clean_folder_recursive(output_files_dir)
         composition = 'composição'
         composition_section_end_list = ['informações técnicas', 'informações ao profissional', 'indicações']
